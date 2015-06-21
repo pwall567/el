@@ -6,9 +6,9 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>net.pwall.el</groupId>
   <artifactId>el</artifactId>
-  <version>1.5</version>
+  <version>3.0</version>
   <name>Expression Language</name>
-  <description>Original version of EL</description>
+  <description>Updated version of EL</description>
 
   <dependencies>
     <dependency>
@@ -21,6 +21,17 @@
       <artifactId>javaee-web-api</artifactId>
       <version>7.0</version> 
     </dependency> 
+    <dependency>
+      <groupId>net.pwall.util</groupId>
+      <artifactId>javautil</artifactId>
+      <version>1.0</version>
+    </dependency>
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <version>4.11</version>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
   <build>

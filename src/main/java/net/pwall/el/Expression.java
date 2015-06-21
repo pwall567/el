@@ -1,26 +1,22 @@
 /*
- * @(#) Expression.java v1.5
+ * @(#) Expression.java v2.0
  *
  * JSTL Expression Language Parser / Evaluator
- * Copyright (C) 2003, 2005, 2006, 2007, 2014  Peter Wall
+ * Copyright (C) 2003, 2005, 2006, 2007, 2012, 2013  Peter Wall
  *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
  *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
  *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
 package net.pwall.el;
@@ -28,12 +24,13 @@ package net.pwall.el;
 import java.lang.reflect.Array;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.text.ParsePosition;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
+
+import net.pwall.util.ParseText;
 
 /**
  * Expression evaluation system for the JSTL Expression Language (EL).  This
@@ -44,15 +41,15 @@ import java.util.NoSuchElementException;
  * <p>Expression evaluation is a two-stage process.  First the source string is
  * parsed into an expression tree, where the lowest-priority operator is the
  * root node of the tree.  Then the tree is evaluated, by calling the
- * <code>evaluate</code> method on the root node.  This will recursively call
- * <code>evaluate</code> on its operands, and then apply the operation.</p>
+ * {@link #evaluate()} method on the root node.  This will recursively call
+ * {@code evaluate()} on its operands, and then apply the operation.</p>
  *
  * <p>The tree resulting from the <code>parse</code> operation may be saved and
  * evaluated repeatedly, with the input variables possibly changing with each
  * evaluation.</p>
  *
  * <p>Variable names in the expression must be resolved by a
- * <code>Resolver</code> object supplied to the <code>Parser</code>, or passed
+ * {@link Resolver} object supplied to the {@link Parser}, or passed
  * to the parse method as a parameter.</p>
  *
  * <p>The specification of the JSTL Expression Language is contained in the
@@ -69,7 +66,7 @@ import java.util.NoSuchElementException;
  *     <li>Array/list <code>length</code> and <code>sum</code> operations</li>
  *   </ul>
  * </p>
- * 
+ *
  * <p>There are many ways to use the system.  The simplest is to use the static
  * methods of this class:
  * <pre>
@@ -92,7 +89,7 @@ import java.util.NoSuchElementException;
  * <pre>
  *     Expression.Parser parser = new Expression.Parser();
  *     parser.setConditionalAllowed(true);
- *     Expression exp = parser.parseExpression("4 > 3 ? 'a' : 'b'", null);
+ *     Expression exp = Expression.parseExpression("4 > 3 ? 'a' : 'b'", null);
  *     Object result = exp.evaluate(); // result will contain 'a'
  * </pre>
  * This is only a brief introduction to the facilities of the system; see the
@@ -110,27 +107,25 @@ public abstract class Expression {
     public static final Constant nullStringConstant = new Constant(nullString);
 
     /**
-     * Parse an entire string to an <code>Expression</code> tree.
+     * Parse an entire string to an {@code Expression} tree.
      *
-     * @param str      text to parse (not including ${ })
-     * @param resolver a <code>Resolver</code> object to resolve names in the
-     *                 expression
-     * @return         the <code>Expression</code> tree
+     * @param str       text to parse (not including ${ })
+     * @param resolver  a {@link Resolver} object to resolve names in the expression
+     * @return          the {@code Expression} tree
      * @throws ParseException on any errors
      */
-    public static Expression parseExpression(CharSequence str,
-            Resolver resolver) throws ParseException {
+    public static Expression parseExpression(CharSequence str, Resolver resolver)
+            throws ParseException {
         return defaultParser.parseExpression(str, resolver);
     }
 
     /**
-     * Replace all occurrences of <code>$&#123;...&#125;</code> in a string
-     * with the contents of the braces evaluated as an expression.
+     * Replace all occurrences of <code>$&#123;...&#125;</code> in a string with the contents of
+     * the braces evaluated as an expression.
      *
-     * @param source   the input text
-     * @param resolver a <code>Resolver</code> object to resolve names in the
-     *                 expression
-     * @return         the text following substitutions
+     * @param source    the input text
+     * @param resolver  a {@link Resolver} object to resolve names in the expression
+     * @return          the text following substitutions
      * @throws ExpressionException on any errors
      */
     public static String substitute(String source, Resolver resolver)
@@ -139,30 +134,27 @@ public abstract class Expression {
     }
 
     /**
-     * Parse a string and return an expression which will replace all
-     * occurrences of <code>$&#123;...&#125;</code> in the string with the
-     * contents of the braces evaluated as an expression.
+     * Parse a string and return an expression which will replace all occurrences of
+     * <code>$&#123;...&#125;</code> in the string with the contents of the braces evaluated as
+     * an expression.
      *
-     * @param str      the text to be parsed
-     * @param resolver a <code>Resolver</code> object to resolve names in the
-     *                 expression
-     * @return         the <code>Expression</code> tree
+     * @param str       the text to be parsed
+     * @param resolver  a {@link Resolver} object to resolve names in the expression
+     * @return          the {@code Expression} tree
      * @throws ParseException on any errors
      */
-    public static Expression parseSubstitution(CharSequence str,
-            Resolver resolver) throws ParseException {
+    public static Expression parseSubstitution(CharSequence str, Resolver resolver)
+            throws ParseException {
         return defaultParser.parseSubstitution(str, resolver);
     }
 
     /**
-     * Optimize the expression - evaluate constant sub-expressions and remove
-     * parentheses.  For an expression that is parsed once and used repeatedly,
-     * optimization is recommended.  For an expression that is evaluated only
-     * once this is unnecessary.
+     * Optimize the expression - evaluate constant sub-expressions and remove parentheses.  For
+     * an expression that is parsed once and used repeatedly, optimization is recommended.  For
+     * an expression that is evaluated only once this is unnecessary.
      *
-     * <p>Subclasses must override this method to perform any specific
-     * optimizations; the default behavior is to return the object itself
-     * (perform no optimizations).</p>
+     * <p>Subclasses must override this method to perform any specific optimizations; the
+     * default behavior is to return the object itself (perform no optimizations).</p>
      *
      * @return  the current expression object
      */
@@ -171,8 +163,7 @@ public abstract class Expression {
     }
 
     /**
-     * Get the result type of this expression.  The default is
-     * <code>{@link Object}</code>.
+     * Get the result type of this expression.  The default is {@link Object}.
      *
      * @return  the result type of the expression
      */
@@ -183,25 +174,24 @@ public abstract class Expression {
     /**
      * Evaluate the expression.
      *
-     * @return the result of the expression
+     * @return  the result of the expression
      * @throws EvaluationException on any errors
      */
     public abstract Object evaluate() throws EvaluationException;
 
     /**
-     * Return <code>true</code> if the expression is constant.  The default is
-     * <code>false</false>.
+     * Return {@code true} if the expression is constant.  The default is {@code false}.
      *
-     * @return <code>true</code> if the expression is constant
+     * @return  {@code true} if the expression is constant
      */
     public boolean isConstant() {
         return false;
     }
 
     /**
-     * Evaluate the expression and return the result as a <code>boolean</code>.
+     * Evaluate the expression and return the result as a {@code boolean}.
      *
-     * @return the result of the expression as a <code>boolean</code>
+     * @return  the result of the expression as a {@code boolean}
      * @throws EvaluationException on any errors
      */
     public boolean asBoolean() throws EvaluationException {
@@ -209,15 +199,14 @@ public abstract class Expression {
     }
 
     /**
-     * Convert an <code>Object</code> to boolean using the coercion rules in the
+     * Convert an {@link Object} to {@code boolean} using the coercion rules in the
      * specification document.
      *
-     * @param  object    the object
-     * @return           a boolean
+     * @param  object   the object
+     * @return          a {@code boolean}
      * @throws BooleanCoercionException on any errors
      */
-    public static boolean asBoolean(Object object)
-            throws BooleanCoercionException {
+    public static boolean asBoolean(Object object) throws BooleanCoercionException {
         if (object == null)
             return false;
         if (object instanceof Boolean)
@@ -236,9 +225,9 @@ public abstract class Expression {
     }
 
     /**
-     * Evaluate the expression and return the result as an <code>int</code>.
+     * Evaluate the expression and return the result as an {@code int}.
      *
-     * @return the result of the expression as an <code>int</code>
+     * @return  the result of the expression as an {@code int}
      * @throws EvaluationException on any errors
      */
     public int asInt() throws EvaluationException {
@@ -246,11 +235,11 @@ public abstract class Expression {
     }
 
     /**
-     * Convert an <code>Object</code> to int using the coercion rules in the
-     * specification document.
+     * Convert an {@link Object} to {@code int} using the coercion rules in the specification
+     * document.
      *
-     * @param  object    the object
-     * @return           an int
+     * @param  object   the object
+     * @return          an {@code int}
      * @throws IntCoercionException on any errors
      */
     public static int asInt(Object object) throws IntCoercionException {
@@ -274,9 +263,9 @@ public abstract class Expression {
     }
 
     /**
-     * Evaluate the expression and return the result as a <code>long</code>.
+     * Evaluate the expression and return the result as a {@code long}.
      *
-     * @return the result of the expression as a <code>long</code>
+     * @return  the result of the expression as a {@code long}
      * @throws EvaluationException on any errors
      */
     public long asLong() throws EvaluationException {
@@ -284,11 +273,11 @@ public abstract class Expression {
     }
 
     /**
-     * Convert an <code>Object</code> to long using the coercion rules in the
-     * specification document.
+     * Convert an {@link Object} to {@code long} using the coercion rules in the specification
+     * document.
      *
-     * @param  object    the object
-     * @return           a long
+     * @param  object   the object
+     * @return          a {@code long}
      * @throws LongCoercionException on any errors
      */
     public static long asLong(Object object) throws LongCoercionException {
@@ -312,9 +301,9 @@ public abstract class Expression {
     }
 
     /**
-     * Evaluate the expression and return the result as a <code>double</code>.
+     * Evaluate the expression and return the result as a {@code double}.
      *
-     * @return the result of the expression as a <code>double</code>
+     * @return  the result of the expression as a {@code double}
      * @throws EvaluationException on any errors
      */
     public double asDouble() throws EvaluationException {
@@ -322,15 +311,14 @@ public abstract class Expression {
     }
 
     /**
-     * Convert an <code>Object</code> to double using the coercion rules in the
-     * specification document.
+     * Convert an {@link Object} to {@code double} using the coercion rules in the specification
+     * document.
      *
-     * @param  object    the object
-     * @return           a double
+     * @param  object   the object
+     * @return          a {@code double}
      * @throws DoubleCoercionException on any errors
      */
-    public static double asDouble(Object object)
-            throws DoubleCoercionException {
+    public static double asDouble(Object object) throws DoubleCoercionException {
         if (object == null)
             return 0.0;
         if (object instanceof Character)
@@ -351,9 +339,9 @@ public abstract class Expression {
     }
 
     /**
-     * Evaluate the expression and return the result as a <code>String</code>.
+     * Evaluate the expression and return the result as a {@link String}.
      *
-     * @return the result of the expression as a <code>String</code>
+     * @return  the result of the expression as a {@link String}
      * @throws EvaluationException on any errors
      */
     public String asString() throws EvaluationException {
@@ -361,15 +349,14 @@ public abstract class Expression {
     }
 
     /**
-     * Convert an <code>Object</code> to String using the coercion rules in the
-     * specification document.
+     * Convert an {@link Object} to {@link String} using the coercion rules in the specification
+     * document.
      *
-     * @param  object    the object
-     * @return           a String
+     * @param  object   the object
+     * @return          a {@link String}
      * @throws StringCoercionException on any errors
      */
-    public static String asString(Object object)
-            throws StringCoercionException {
+    public static String asString(Object object) throws StringCoercionException {
         if (object == null)
             return nullString;
         try {
@@ -383,9 +370,9 @@ public abstract class Expression {
     /**
      * Get the result of an indexing operation - either a [] or dot operation.
      *
-     * @param left   the object on the left of the expression
-     * @param right  the object on the right of the dot or within the brackets
-     * @return  the result
+     * @param left      the object on the left of the expression
+     * @param right     the object on the right of the dot or within the brackets
+     * @return          the result
      * @throws EvaluationException on any errors
      */
     public static Object getIndexed(Object left, Object right) throws EvaluationException {
@@ -446,9 +433,9 @@ public abstract class Expression {
     /**
      * Set the result of an indexing operation - either a [] or dot operation.
      *
-     * @param left   the object on the left of the expression
-     * @param right  the object on the right of the dot or within the brackets
-     * @param value  the new value
+     * @param left      the object on the left of the expression
+     * @param right     the object on the right of the dot or within the brackets
+     * @param value     the new value
      * @throws EvaluationException on any errors
      */
     @SuppressWarnings("unchecked")
@@ -507,8 +494,8 @@ public abstract class Expression {
     /**
      * Check whether character is valid as the start of an identifier.
      *
-     * @param ch  the character
-     * @return    true if character is valid
+     * @param ch    the character
+     * @return      {@code true} if character is valid
      */
     public static boolean isIdentifierStart(char ch) {
         return Character.isJavaIdentifierStart(ch);
@@ -517,8 +504,8 @@ public abstract class Expression {
     /**
      * Check whether character is valid as a part of an identifier.
      *
-     * @param ch  the character
-     * @return    true if character is valid
+     * @param ch    the character
+     * @return      {@code true} if character is valid
      */
     public static boolean isIdentifierPart(char ch) {
         return Character.isJavaIdentifierPart(ch);
@@ -527,8 +514,8 @@ public abstract class Expression {
     /**
      * Check whether string is valid as an identifier.
      *
-     * @param str  the string (any <code>CharSequence</code> is allowed)
-     * @return     true if string is valid
+     * @param str   the string (any {@link CharSequence} is allowed)
+     * @return      {@code true} if string is valid
      */
     public static boolean isValidIdentifier(CharSequence str) {
         if (str == null || str.length() == 0)
@@ -542,12 +529,11 @@ public abstract class Expression {
     }
 
     /**
-     * Tests whether an operand object is floating point - a <code>Float</code>,
-     * a <code>Double</code> or a string that could be converted to
-     * a floating point number.
+     * Tests whether an operand object is floating point - a {@code Float}, a {@code Double} or
+     * a string that could be converted to a floating point number.
      *
-     * @param a    the operand object to test
-     * @return     true if the operand is floating point
+     * @param a     the operand object to test
+     * @return      {@code true} if the operand is floating point
      */
     protected static boolean floatOrStringOperand(Object a) {
         return a instanceof Float || a instanceof Double || floatString(a);
@@ -556,21 +542,20 @@ public abstract class Expression {
     /**
      * Tests whether an operand object is a floating point object.
      *
-     * @param a    the operand object to test
-     * @return     true if the operand is a floating point object
+     * @param a     the operand object to test
+     * @return      {@code true} if the operand is a floating point object
      */
     protected static boolean floatOperand(Object a) {
         return a instanceof Float || a instanceof Double;
     }
 
     /**
-     * Tests whether an operand object is a string that should be treated as a
-     * floating point number.  Note that it does not confirm that the string
-     * contains a valid number, only that any attempt to convert it to a number
-     * should use a floating point conversion.
+     * Tests whether an operand object is a string that should be treated as a floating point
+     * number.  Note that it does not confirm that the string contains a valid number, only that
+     * any attempt to convert it to a number should use a floating point conversion.
      *
-     * @param a    the operand object to test
-     * @return     true if the operand is a floating point string
+     * @param a     the operand object to test
+     * @return      {@code true} if the operand is a floating point string
      */
     protected static boolean floatString(Object a) {
         if (a instanceof String) {
@@ -583,10 +568,10 @@ public abstract class Expression {
     }
 
     /**
-     * Tests whether an operand object is an integer (<code>Long</code>) object.
+     * Tests whether an operand object is an integer (e.g. {@code Long}) object.
      *
-     * @param a    the operand object to test
-     * @return     true if the operand is an integer object
+     * @param a     the operand object to test
+     * @return      {@code true} if the operand is an integer object
      */
     protected static boolean longOperand(Object a) {
         return a instanceof Byte || a instanceof Short || a instanceof Long ||
@@ -594,14 +579,13 @@ public abstract class Expression {
     }
 
     /**
-     * Find a public getter method for the named property.  The class may
-     * not be public, or the getter method in that class may not be public,
-     * so we need to go up the class hierarchy or the implemented interfaces
-     * to locate a public method on a public class or interface.
+     * Find a public getter method for the named property.  The class may not be public, or the
+     * getter method in that class may not be public, so we need to go up the class hierarchy or
+     * the implemented interfaces to locate a public method on a public class or interface.
      *
      * @param cls   the class of the object
      * @param name  the getter method name
-     * @return      the <code>Method</code> object.
+     * @return      the {@link Method} object.
      */
     private static Method findPublicGetter(Class<?> cls, String name) {
         for (Class<?> c = cls; c != null; c = c.getSuperclass()) {
@@ -627,15 +611,14 @@ public abstract class Expression {
     }
 
     /**
-     * Find a public setter method for the named property.  The class may
-     * not be public, or the setter method in that class may not be public,
-     * so we need to go up the class hierarchy or the implemented interfaces
-     * to locate a public method on a public class or interface.
+     * Find a public setter method for the named property.  The class may not be public, or the
+     * setter method in that class may not be public, so we need to go up the class hierarchy or
+     * the implemented interfaces to locate a public method on a public class or interface.
      *
-     * @param leftClass  the class of the object
-     * @param name       the setter method name
-     * @param valueClass the class of the value
-     * @return           the <code>Method</code> object.
+     * @param leftClass     the class of the object
+     * @param name          the setter method name
+     * @param valueClass    the class of the value
+     * @return              the {@link Method} object.
      */
     private static Method findPublicSetter(Class<?> leftClass, String name,
             Class<?> valueClass) {
@@ -668,10 +651,9 @@ public abstract class Expression {
 
     /**
      * The expression parser.  There is a static instance of this class in the
-     * <code>Expression</code> class which will translate the standard form of
-     * the Expression Language; non-standard uses (e.g. the use of the assign
-     * operator) will require a specific parser to be instantiated and
-     * customized before use.
+     * {@code Expression} class which will translate the standard form of the Expression
+     * Language; non-standard uses (e.g. the use of the assign operator) will require a specific
+     * parser to be instantiated and customized before use.
      */
     public static class Parser {
 
@@ -684,11 +666,11 @@ public abstract class Expression {
         private boolean arrayOperationAllowed = false;
 
         /**
-         * Get the state of the "assign allowed" flag.  When this flag is set
-         * to <code>true</code> the assignment operator is recognized by the
-         * parser (this is an extension to the JSTL 1.0 EL specification).
+         * Get the state of the "assign allowed" flag.  When this flag is set to {@code true}
+         * the assignment operator is recognized by the parser (this is an extension to the
+         * JSTL 1.0 EL specification).
          *
-         * @return the state of the "assign allowed" flag
+         * @return  the state of the "assign allowed" flag
          */
         public boolean isAssignAllowed() {
             return assignAllowed;
@@ -697,7 +679,7 @@ public abstract class Expression {
         /**
          * Set the new state of the "assign allowed" flag.
          *
-         * @param assignAllowed  the new state of the "assign allowed" flag
+         * @param assignAllowed     the new state of the "assign allowed" flag
          * @see #isAssignAllowed()
          */
         public void setAssignAllowed(boolean assignAllowed) {
@@ -705,12 +687,11 @@ public abstract class Expression {
         }
 
         /**
-         * Get the state of the "conditional allowed" flag.  When this flag is
-         * set to <code>true</code> the conditional (triadic) operator is
-         * recognized by the parser (this is an extension to the JSTL 1.0 EL
-         * specification).
+         * Get the state of the "conditional allowed" flag.  When this flag is set to
+         * {@code true} the conditional (triadic) operator is recognized by the parser (this is
+         * an extension to the JSTL 1.0 EL specification).
          *
-         * @return the state of the "conditional allowed" flag
+         * @return  the state of the "conditional allowed" flag
          */
         public boolean isConditionalAllowed() {
             return conditionalAllowed;
@@ -719,8 +700,7 @@ public abstract class Expression {
         /**
          * Set the new state of the "conditional allowed" flag.
          *
-         * @param conditionalAllowed  the new state of the "conditional
-         *                            allowed" flag
+         * @param conditionalAllowed    the new state of the "conditional allowed" flag
          * @see #isConditionalAllowed()
          */
         public void setConditionalAllowed(boolean conditionalAllowed) {
@@ -728,12 +708,11 @@ public abstract class Expression {
         }
 
         /**
-         * Get the state of the "case convert allowed" flag.  When this flag is
-         * set to <code>true</code> the <code>toupper</code> and
-         * <code>tolower</code> case conversion operators are recognized by the
-         * parser (this is an extension to the JSTL 1.0 EL specification).
+         * Get the state of the "case convert allowed" flag.  When this flag is set to
+         * {@code true} the {@code toupper} and {@code tolower} case conversion operators are
+         * recognized by the parser (this is an extension to the JSTL 1.0 EL specification).
          *
-         * @return the state of the "case convert allowed" flag
+         * @return  the state of the "case convert allowed" flag
          */
         public boolean isCaseConvertAllowed() {
             return caseConvertAllowed;
@@ -742,8 +721,7 @@ public abstract class Expression {
         /**
          * Set the new state of the "case convert allowed" flag.
          *
-         * @param caseConvertAllowed  the new state of the "case convert
-         *                            allowed" flag
+         * @param caseConvertAllowed    the new state of the "case convert allowed" flag
          * @see #isCaseConvertAllowed()
          */
         public void setCaseConvertAllowed(boolean caseConvertAllowed) {
@@ -751,11 +729,11 @@ public abstract class Expression {
         }
 
         /**
-         * Get the state of the "match allowed" flag.  When this flag is set to
-         * <code>true</code> the pattern match operator is recognized by the
-         * parser (this is an extension to the JSTL 1.0 EL specification).
+         * Get the state of the "match allowed" flag.  When this flag is set to {@code true} the
+         * pattern match operator is recognized by the parser (this is an extension to the
+         * JSTL 1.0 EL specification).
          *
-         * @return the state of the "match allowed" flag
+         * @return  the state of the "match allowed" flag
          */
         public boolean isMatchAllowed() {
             return matchAllowed;
@@ -764,7 +742,7 @@ public abstract class Expression {
         /**
          * Set the new state of the "match allowed" flag.
          *
-         * @param matchAllowed  the new state of the "match allowed" flag
+         * @param matchAllowed      the new state of the "match allowed" flag
          * @see #isMatchAllowed()
          */
         public void setMatchAllowed(boolean matchAllowed) {
@@ -772,12 +750,11 @@ public abstract class Expression {
         }
 
         /**
-         * Get the state of the "join allowed" flag.  When this flag is set to
-         * <code>true</code> the string concatenation (join) operator is
-         * recognized by the parser (this is an extension to the JSTL 1.0 EL
-         * specification).
+         * Get the state of the "join allowed" flag.  When this flag is set to {@code true} the
+         * string concatenation (join) operator is recognized by the parser (this is an
+         * extension to the JSTL 1.0 EL specification).
          *
-         * @return the state of the "join allowed" flag
+         * @return  the state of the "join allowed" flag
          */
         public boolean isJoinAllowed() {
             return joinAllowed;
@@ -786,7 +763,7 @@ public abstract class Expression {
         /**
          * Set the new state of the "join allowed" flag.
          *
-         * @param joinAllowed  the new state of the "join allowed" flag
+         * @param joinAllowed   the new state of the "join allowed" flag
          * @see #isJoinAllowed()
          */
         public void setJoinAllowed(boolean joinAllowed) {
@@ -794,12 +771,11 @@ public abstract class Expression {
         }
 
         /**
-         * Get the state of the "array operation allowed" flag.  When this flag
-         * is set to <code>true</code> the array/list length and sum operators
-         * are recognized by the parser (this is an extension to the JSTL 1.0 EL
-         * specification).
+         * Get the state of the "array operation allowed" flag.  When this flag is set to
+         * {@code true} the array/list length and sum operators are recognized by the parser
+         * (this is an extension to the JSTL 1.0 EL specification).
          *
-         * @return the state of the "array operation allowed" flag
+         * @return  the state of the "array operation allowed" flag
          */
         public boolean isArrayOperationAllowed() {
             return arrayOperationAllowed;
@@ -808,8 +784,7 @@ public abstract class Expression {
         /**
          * Set the new state of the "array operation allowed" flag.
          *
-         * @param arrayOperationAllowed  the new state of the "array operation
-         *                               allowed" flag
+         * @param arrayOperationAllowed     the new state of the "array operation allowed" flag
          * @see #isArrayOperationAllowed()
          */
         public void setArrayOperationAllowed(boolean arrayOperationAllowed) {
@@ -817,222 +792,197 @@ public abstract class Expression {
         }
 
         /**
-         * Parse an expression from text to an <code>Expression</code> tree.
-         * The parse operation will start at the position indicated by the
-         * <code>ParsePosition</code> object supplied as a parameter, and will
-         * stop on the first unrecognized element.  The
-         * <code>ParsePosition</code> will be updated to point to the location
-         * where the parse stopped, and the caller must confirm that this is the
-         * end of the expression.
+         * Parse an expression from text to an {@code Expression} tree.  The parse operation
+         * will start at the current index position of the {@link ELParseText} object, and will
+         * stop either at the end of the text or on the first unrecognized element.  The
+         * {@link ELParseText} will be updated past the text translated, and the caller must
+         * confirm that this is the end of the expression.
          *
-         * @param str      text to parse (not including ${ })
-         * @param pp       <code>ParsePosition</code> object
-         * @param resolver a <code>Resolver</code> object to resolve names in
-         *                 the expression
-         * @return         the <code>Expression</code> tree
+         * @param test      an {@link ELParseText} object containing the text to parse
+         *                  (not including ${ })
+         * @param resolver  a {@link Resolver} object to resolve names in
+         *                  the expression
+         * @return          the {@code Expression} tree
          * @throws ParseException on any errors
          */
-        public Expression parseExpression(CharSequence str, ParsePosition pp,
-                Resolver resolver) throws ParseException {
+        public Expression parseExpression(ELParseText text, Resolver resolver)
+                throws ParseException {
             Operator expression = new Parentheses(null);
             Operator current = expression;
-            int strLen = str.length();
             for (;;) {
-                skipSpaces(str, pp);
-                int tokenStart = pp.getIndex();
-                if (tokenStart >= strLen)
+                text.skipSpaces();
+                if (text.isExhausted())
                     throw new UnexpectedEndException();
-                char ch = str.charAt(tokenStart);
                 // first look for a prefix operator (-, !, not, empty)
-                if (ch == '-') {
-                    // check if start of numeric literal
-                    int pos = tokenStart + 1;
-                    if (!(pos < strLen && isDigitOrDot(str.charAt(pos)))) {
+                if (text.match('-')) {
+                    if (text.match('.') || text.matchDecFixed(1)) {
+                        // it's a numeric literal - backspace and leave it
+                        text.back(2);
+                    }
+                    else {
                         Operator op = new Negate(null);
                         current.setRight(op);
                         current = op;
-                        pp.setIndex(pos);
                         continue;
                     }
                 }
-                if (match(str, pp, '!') || match(str, pp, "not")) {
+                if (text.match('!') || text.matchName("not")) {
                     Operator op = new Not(null);
                     current.setRight(op);
                     current = op;
                     continue;
                 }
-                if (match(str, pp, "empty")) {
+                if (text.matchName("empty")) {
                     Operator op = new Empty(null);
                     current.setRight(op);
                     current = op;
                     continue;
                 }
-                if (isCaseConvertAllowed() && match(str, pp, "toupper")) {
+                if (isCaseConvertAllowed() && text.matchName("toupper")) {
                     Operator op = new ToUpper(null);
                     current.setRight(op);
                     current = op;
                     continue;
                 }
-                if (isCaseConvertAllowed() && match(str, pp, "tolower")) {
+                if (isCaseConvertAllowed() && text.matchName("tolower")) {
                     Operator op = new ToLower(null);
                     current.setRight(op);
                     current = op;
                     continue;
                 }
-                if (isArrayOperationAllowed() && match(str, pp, "length")) {
+                if (isArrayOperationAllowed() && text.matchName("length")) {
                     Operator op = new Length(null);
                     current.setRight(op);
                     current = op;
                     continue;
                 }
-                if (isArrayOperationAllowed() && match(str, pp, "sum")) {
+                if (isArrayOperationAllowed() && text.matchName("sum")) {
                     Operator op = new Sum(null);
                     current.setRight(op);
                     current = op;
                     continue;
                 }
                 // check for parentheses and a subexpression (recursion)
-                if (ch == '(') {
-                    pp.setIndex(tokenStart + 1);
-                    Expression nested = parseExpression(str, pp, resolver);
-                    int newPos = pp.getIndex();
-                    if (newPos >= strLen || str.charAt(newPos) != ')') {
-                        pp.setErrorIndex(newPos);
+                if (text.match('(')) {
+                    Expression nested = parseExpression(text, resolver);
+                    if (!text.match(')'))
                         throw new UnmatchedParenthesisException();
-                    }
                     if (!(nested instanceof Parentheses))
                         nested = new Parentheses(nested);
                     current.setRight(nested);
-                    pp.setIndex(newPos + 1);
                 }
-                else if (ch >= '0' && ch <= '9' || ch == '.' || ch == '+' ||
-                        ch == '-') {
+                else if (text.matchNumber()) {
                     // numeric literal
-                    current.setRight(new Constant(parseNumber(str, pp)));
+                    current.setRight(new Constant(text.getResultNumber()));
                 }
-                else if (ch == '"' || ch == '\'') {
+                else if (text.matchStringLiteral()) {
                     // string literal
-                    current.setRight(new Constant(parseString(str, pp)));
+                    current.setRight(new Constant(text.getResultStringLiteral()));
                 }
-                else if (match(str, pp, "null")) {
+                else if (text.matchName("null")) {
                     // null literal
                     current.setRight(new Constant(null));
                 }
-                else if (match(str, pp, "true")) {
+                else if (text.matchName("true")) {
                     // boolean literal
                     current.setRight(trueConstant);
                 }
-                else if (match(str, pp, "false")) {
+                else if (text.matchName("false")) {
                     // boolean literal
                     current.setRight(falseConstant);
                 }
-                else if (match(str, pp, "and") || match(str, pp, "div") ||
-                        match(str, pp, "eq") || match(str, pp, "ge") ||
-                        match(str, pp, "gt") || match(str, pp, "instanceof") ||
-                        match(str, pp, "le") || match(str, pp, "lt") ||
-                        match(str, pp, "mod") || match(str, pp, "ne") ||
-                        match(str, pp, "or")) {
+                else if (text.matchName("and") || text.matchName("div") ||
+                        text.matchName("eq") || text.matchName("ge") ||
+                        text.matchName("gt") || text.matchName("instanceof") ||
+                        text.matchName("le") || text.matchName("lt") ||
+                        text.matchName("mod") || text.matchName("ne") ||
+                        text.matchName("or")) {
                     // other reserved word - error
-                    pp.setErrorIndex(tokenStart);
                     throw new ReservedWordException();
                 }
-                else if (isIdentifierStart(ch)) {
+                else if (text.matchName()) {
                     // lookup identifier using external name resolver
-                    String identString = parseIdentifier(str, pp);
+                    String identString = text.getResultString();
                     Expression identifier = null;
                     if (resolver != null)
                         identifier = resolver.resolve(identString);
-                    if (identifier == null) {
-                        pp.setErrorIndex(tokenStart);
+                    if (identifier == null)
                         throw new IdentifierException(identString);
-                    }
                     current.setRight(identifier);
                 }
                 else {
                     // none of the above - error
-                    pp.setErrorIndex(tokenStart);
                     throw new UnexpectedElementException();
                 }
-                skipSpaces(str, pp);
+                text.skipSpaces();
                 // now check for . and [] (possibly multiple)
                 Expression currentRight = current.getRight();
-                if (currentRight instanceof Parentheses ||
-                        currentRight instanceof Variable) {
-                    while (pp.getIndex() < strLen) {
-                        if (match(str, pp, '.')) {
+                if (currentRight instanceof Parentheses || currentRight instanceof Variable) {
+                    while (!text.isExhausted()) {
+                        if (text.match('.')) {
                             // . property
-                            skipSpaces(str, pp);
-                            int i = pp.getIndex();
-                            if (i >= strLen ||
-                                    !isIdentifierStart(str.charAt(i))) {
-                                pp.setErrorIndex(i);
+                            text.skipSpaces();
+                            if (!text.matchName())
                                 throw new PropertyException();
-                            }
                             Indexed indexed = new Indexed(currentRight,
-                                    new Constant(parseIdentifier(str, pp)));
+                                    new Constant(text.getResultString()));
                             current.setRight(indexed);
                             currentRight = indexed;
-                            skipSpaces(str, pp);
+                            text.skipSpaces();
                         }
-                        else if (match(str, pp, '[')) {
+                        else if (text.match('[')) {
                             // [ index ]
-                            int start = pp.getIndex() - 1;
-                            Expression nested =
-                                    parseExpression(str, pp, resolver);
-                            int i = pp.getIndex();
-                            if (i >= strLen || str.charAt(i) != ']') {
-                                pp.setErrorIndex(start);
+                            Expression nested = parseExpression(text, resolver);
+                            if (!text.match(']'))
                                 throw new UnmatchedBracketException();
-                            }
                             Indexed indexed = new Indexed(currentRight, nested);
                             current.setRight(indexed);
                             currentRight = indexed;
-                            pp.setIndex(i + 1);
-                            skipSpaces(str, pp);
+                            text.skipSpaces();
                         }
                         else
                             break;
                     }
                 }
-                if (pp.getIndex() == strLen)
+                if (text.isExhausted())
                     break;
                 // now check for a diadic operator (like + or ==)
                 Diadic diadic = null;
-                if (match(str, pp, "and") || match(str, pp, "&&"))
+                if (text.matchName("and") || text.match("&&"))
                     diadic = new And(null, null);
-                else if (match(str, pp, "or") || match(str, pp, "||"))
+                else if (text.matchName("or") || text.match("||"))
                     diadic = new Or(null, null);
-                else if (match(str, pp, '+'))
+                else if (text.match('+'))
                     diadic = new Plus(null, null);
-                else if (match(str, pp, '-'))
+                else if (text.match('-'))
                     diadic = new Minus(null, null);
-                else if (match(str, pp, '*'))
+                else if (text.match('*'))
                     diadic = new Multiply(null, null);
-                else if (match(str, pp, '/') || match(str, pp, "div"))
+                else if (text.match('/') || text.matchName("div"))
                     diadic = new Divide(null, null);
-                else if (match(str, pp, '%') || match(str, pp, "mod"))
+                else if (text.match('%') || text.matchName("mod"))
                     diadic = new Modulo(null, null);
-                else if (match(str, pp, ">=") || match(str, pp, "ge"))
+                else if (text.match(">=") || text.matchName("ge"))
                     diadic = new GreaterEqual(null, null);
-                else if (match(str, pp, "<=") || match(str, pp, "le"))
+                else if (text.match("<=") || text.matchName("le"))
                     diadic = new LessEqual(null, null);
-                else if (match(str, pp, '>') || match(str, pp, "gt"))
+                else if (text.match('>') || text.matchName("gt"))
                     diadic = new GreaterThan(null, null);
-                else if (match(str, pp, '<') || match(str, pp, "lt"))
+                else if (text.match('<') || text.matchName("lt"))
                     diadic = new LessThan(null, null);
-                else if (match(str, pp, "==") || match(str, pp, "eq"))
+                else if (text.match("==") || text.matchName("eq"))
                     diadic = new Equal(null, null);
-                else if (match(str, pp, "!=") || match(str, pp, "ne"))
+                else if (text.match("!=") || text.matchName("ne"))
                     diadic = new NotEqual(null, null);
-                else if (isConditionalAllowed() && match(str, pp, '?'))
+                else if (isConditionalAllowed() && text.match('?'))
                     diadic = new Conditional(null, null);
-                else if (isConditionalAllowed() && match(str, pp, ':'))
+                else if (isConditionalAllowed() && text.match(':'))
                     diadic = new Else(null, null);
-                else if (isAssignAllowed() && match(str, pp, '='))
+                else if (isAssignAllowed() && text.match('='))
                     diadic = new Assign(null, null);
-                else if (isMatchAllowed() && match(str, pp, "~="))
+                else if (isMatchAllowed() && text.match("~="))
                     diadic = new Match(null, null);
-                else if (isJoinAllowed() && match(str, pp, '#'))
+                else if (isJoinAllowed() && text.match('#'))
                     diadic = new Join(null, null);
                 else
                     break;
@@ -1063,9 +1013,8 @@ public abstract class Expression {
         }
 
         /**
-         * Check that every conditional expression has a matching else
-         * subexpression, and that no else expressions appear other than as
-         * subexpressions of a conditional expression.
+         * Check that every conditional expression has a matching else subexpression, and that
+         * no else expressions appear other than as subexpressions of a conditional expression.
          *
          * @param expr  the expression to be checked
          * @throws ParseException on any errors
@@ -1096,164 +1045,133 @@ public abstract class Expression {
         }
 
         /**
-         * Parse an entire string to an <code>Expression</code> tree.
+         * Parse an entire string to an {@code Expression} tree.
          *
-         * @param str      text to parse (not including ${ })
-         * @param resolver a <code>Resolver</code> object to resolve names in
-         *                 the expression
-         * @return         the <code>Expression</code> tree
+         * @param str       text to parse (not including ${ })
+         * @param resolver  a {@link Resolver} object to resolve names in the expression
+         * @return          the {@code Expression} tree
          * @throws ParseException on any errors
          */
-        public Expression parseExpression(CharSequence str,
-                Resolver resolver) throws ParseException {
-            ParsePosition pp = new ParsePosition(0);
-            Expression expression = parseExpression(str, pp, resolver);
-            if (pp.getIndex() < str.length()) {
-                pp.setErrorIndex(pp.getIndex());
+        public Expression parseExpression(CharSequence str, Resolver resolver)
+                throws ParseException {
+            ELParseText text = new ELParseText(str);
+            Expression expression = parseExpression(text, resolver);
+            if (!text.isExhausted())
                 throw new UnparsedStringException();
-            }
             return expression;
         }
 
         /**
-         * Replace all occurrences of <code>$&#123;...&#125;</code> in a string
-         * with the contents of the braces evaluated as an expression.
+         * Replace all occurrences of <code>$&#123;...&#125;</code> in a string with the
+         * contents of the braces evaluated as an expression.
          *
-         * @param source   the input text
-         * @param resolver a <code>Resolver</code> object to resolve names in
-         *                 the expression
-         * @return         the text following substitutions
+         * @param source    the input text
+         * @param resolver  a {@link Resolver} object to resolve names in the expression
+         * @return          the text following substitutions
          * @throws ExpressionException on any errors
          */
-        public String substitute(String source, Resolver resolver)
-                throws ExpressionException {
-            int offset = source.indexOf("${");
-            if (offset < 0)
+        public String substitute(String source, Resolver resolver) throws ExpressionException {
+            ELParseText text = new ELParseText(source);
+            text.skipTo("${");
+            if (text.isExhausted())
                 return source;
-            ParsePosition pp = new ParsePosition(2);
-            int current = 0;
-            StringBuffer buf = null;
-            int len = source.length();
-            if (offset == 0) {
+            StringBuilder sb = null;
+            if (text.getIndex() == 0) {
                 // optimize case where source is a single substitution
-                String result = parseExpression(source, pp, resolver).
-                        asString();
-                current = pp.getIndex();
-                if (!(current < len && source.charAt(current) == '}'))
+                text.skip(2);
+                String result = parseExpression(text, resolver).asString();
+                if (!text.match('}'))
                     throw new UnmatchedBraceException();
-                if (++current == len)
+                if (text.isExhausted())
                     return result;
-                buf = new StringBuffer(result);
-                offset = source.indexOf("${", current);
-                if (offset < 0) {
-                    buf.append(source.substring(current));
-                    return buf.toString();
+                sb = new StringBuilder(result);
+                text.skipTo("${");
+                if (text.isExhausted()) {
+                    text.appendResultTo(sb);
+                    return sb.toString();
                 }
             }
             else
-                buf = new StringBuffer();
+                sb = new StringBuilder();
             for (;;) {
-                if (offset > current)
-                    buf.append(source.substring(current, offset));
-                pp.setIndex(offset + 2);
-                buf.append(parseExpression(source, pp, resolver).asString());
-                current = pp.getIndex();
-                if (!(current < len && source.charAt(current) == '}'))
+                text.appendResultTo(sb);
+                text.skip(2); // to get here, we must have matched "${"
+                sb.append(parseExpression(text, resolver).asString());
+                if (!text.match('}'))
                     throw new UnmatchedBraceException();
-                ++current;
-                offset = source.indexOf("${", current);
-                if (offset < 0)
+                text.skipTo("${");
+                if (text.isExhausted())
                     break;
             }
-            if (current < len)
-                buf.append(source.substring(current));
-            return buf.toString();
+            text.appendResultTo(sb);
+            return sb.toString();
         }
 
         /**
-         * Parse a string and return an expression which will replace all
-         * occurrences of <code>$&#123;...&#125;</code> in the string with the
-         * contents of the braces evaluated as an expression.
+         * Parse a string and return an expression which will replace all occurrences of
+         * <code>$&#123;...&#125;</code> in the string with the contents of the braces evaluated
+         * as an expression.
          *
-         * @param str      the text to be parsed
-         * @param resolver a <code>Resolver</code> object to resolve names in
-         *                 the expression
-         * @return         the <code>Expression</code> tree
+         * @param str       the text to be parsed
+         * @param resolver  a {@link Resolver} object to resolve names in the expression
+         * @return          the {@code Expression} tree
          * @throws ParseException on any errors
          */
         public Expression parseSubstitution(CharSequence str, Resolver resolver)
                 throws ParseException {
             Concat concat = new Concat();
-            int len = str.length();
-            int i = 0;
+            ELParseText text = new ELParseText(str);
             for (;;) {
-                if (i == len)
+                if (text.isExhausted())
                     break;
-                if (str.charAt(i) == '$' && i + 1 < len &&
-                        str.charAt(i + 1) == '{') {
-                    ParsePosition pp = new ParsePosition(i + 2);
-                    concat.addExpression(parseExpression(str, pp, resolver));
-                    i = pp.getIndex();
-                    if (!(i < len && str.charAt(i) == '}'))
+                if (text.match("${")) {
+                    concat.addExpression(parseExpression(text, resolver));
+                    if (!text.match('}'))
                         throw new UnmatchedBraceException();
-                    ++i;
                 }
                 else {
-                    int start = i;
-                    do {
-                        ++i;
-                    } while (i < len && !(str.charAt(i) == '$' && i + 1 < len &&
-                            str.charAt(i + 1) == '{'));
-                    concat.addExpression(
-                            new Constant(str.subSequence(start, i).toString()));
+                    text.skipTo("${");
+                    concat.addExpression(new Constant(text.getResultString()));
                 }
             }
             return concat.singleExpression();
         }
 
         /**
-         * Parse an expression from text to an <code>Expression</code> tree.
-         * This method is identical to {@link #parseExpression(CharSequence,
-         * ParsePosition, Expression.Resolver)} above except that it uses a
-         * <code>Resolver</code> set by the
-         * {@link #setResolver(Expression.Resolver)} method.
+         * Parse an expression from text to an {@code Expression} tree.  This method is
+         * identical to {@link #parseExpression(ELParseText, Resolver)} above except that it
+         * uses a {@link Resolver} set by the {@link #setResolver(Resolver)} method.
          *
-         * @param str      text to parse (not including ${ })
-         * @param pp       <code>ParsePosition</code> object
-         * @return         the <code>Expression</code> tree
+         * @param test      an {@link ELParseText} object containing the text to parse
+         *                  (not including ${ })
+         * @return          the {@code Expression} tree
          * @throws ParseException on any errors
          */
-        public Expression parseExpression(CharSequence str, ParsePosition pp)
-                throws ParseException {
-            return parseExpression(str, pp, resolver);
+        public Expression parseExpression(ELParseText text) throws ParseException {
+            return parseExpression(text, resolver);
         }
 
         /**
-         * Parse an entire string to an <code>Expression</code> tree.  This
-         * method is identical to {@link #parseExpression(CharSequence,
-         * Expression.Resolver)} above except that it uses a
-         * <code>Resolver</code> set by the
-         * {@link #setResolver(Expression.Resolver)} method.
+         * Parse an entire string to an {@code Expression} tree.  This method is identical to
+         * {@link #parseExpression(CharSequence, Resolver)} above except that it uses a
+         * {@link Resolver} set by the {@link #setResolver(Resolver)} method.
          *
-         * @param str      text to parse (not including ${ })
-         * @return         the <code>Expression</code> tree
+         * @param str       text to parse (not including ${ })
+         * @return          the {@code Expression} tree
          * @throws ParseException on any errors
          */
-        public Expression parseExpression(CharSequence str)
-                throws ParseException {
+        public Expression parseExpression(CharSequence str) throws ParseException {
             return parseExpression(str, resolver);
         }
 
         /**
-         * Replace all occurrences of <code>$&#123;...&#125;</code> in a string
-         * with the contents of the braces evaluated as an expression.
-         * This method is identical to {@link #substitute(String,
-         * Expression.Resolver)} above except that it uses a
-         * <code>Resolver</code> set by the
-         * {@link #setResolver(Expression.Resolver)} method.
+         * Replace all occurrences of <code>$&#123;...&#125;</code> in a string with the
+         * contents of the braces evaluated as an expression.  This method is identical to
+         * {@link #substitute(String, Resolver)} above except that it uses a
+         * {@link Resolver} set by the {@link #setResolver(Resolver)} method.
          *
-         * @param source   the input text
-         * @return         the text following substitutions
+         * @param source    the input text
+         * @return          the text following substitutions
          * @throws ExpressionException on any errors
          */
         public String substitute(String source) throws ExpressionException {
@@ -1261,286 +1179,44 @@ public abstract class Expression {
         }
 
         /**
-         * Parse a string and return an expression which will replace all
-         * occurrences of <code>$&#123;...&#125;</code> in the string with the
-         * contents of the braces evaluated as an expression.
-         * This method is identical to {@link #parseSubstitution(CharSequence,
-         * Expression.Resolver)} above except that it uses a
-         * <code>Resolver</code> set by the
-         * {@link #setResolver(Expression.Resolver)} method.
+         * Parse a string and return an expression which will replace all occurrences of
+         * <code>$&#123;...&#125;</code> in the string with the contents of the braces evaluated
+         * as an expression. This method is identical to {@link #parseSubstitution(CharSequence,
+         * Resolver)} above except that it uses a {@link Resolver} set by the
+         * {@link #setResolver(Resolver)} method.
          *
-         * @param str      the text to be parsed
-         * @return         the <code>Expression</code> tree
+         * @param str       the text to be parsed
+         * @return          the {@code Expression} tree
          * @throws ParseException on any errors
          */
-        public Expression parseSubstitution(CharSequence str)
-                throws ParseException {
+        public Expression parseSubstitution(CharSequence str) throws ParseException {
             return parseSubstitution(str, resolver);
         }
 
         /**
-         * Get the current <code>Resolver</code>.
+         * Get the current {@link Resolver}.
          *
-         * @return the current <code>Resolver</code>
+         * @return the current {@link Resolver}
          */
         public Resolver getResolver() {
             return resolver;
         }
 
         /**
-         * Set the <code>Resolver</code> for use when no <code>Resolver</code>
-         * is specified on a method call.
+         * Set the {@link Resolver} for use when no {@link Resolver} is specified on a method
+         * call.
          *
-         * @param resolver the <code>Resolver</code>
+         * @param resolver the {@link Resolver}
          */
         public void setResolver(Resolver resolver) {
             this.resolver = resolver;
         }
 
-        /**
-         * Extracts an identifier from the current position in the character
-         * sequence.  This assumes that the first character has already been
-         * confirmed to be a valid identifier start character.
-         *
-         * @param str   the character sequence
-         * @param pp    a <code>ParsePosition</code> object containing the
-         *              current index into the character sequence - this will be
-         *              updated to reflect the position after the identifier
-         * @return      the identifier
-         */
-        private static String parseIdentifier(CharSequence str,
-                ParsePosition pp) {
-            int start = pp.getIndex();
-            int strLen = str.length();
-            int i = start;
-            do {
-                ++i;
-            } while (i < strLen && isIdentifierPart(str.charAt(i)));
-            pp.setIndex(i);
-            return str.subSequence(start, i).toString();
-        }
-
-        /**
-         * Extracts a number from the current position in the character
-         * sequence.
-         *
-         * @param str   the character sequence
-         * @param pp    a <code>ParsePosition</code> object containing the
-         *              current index into the character sequence - this will be
-         *              updated to reflect the position after the number
-         * @return      the identifier
-         * @throws NumberException on any errors 
-         */
-        private static Number parseNumber(CharSequence str, ParsePosition pp)
-                throws NumberException {
-            int strLen = str.length();
-            int i = pp.getIndex();
-            int start = i;
-            char ch = str.charAt(i);
-            boolean negative = false;
-            if (ch == '+')
-                ++i;
-            else if (ch == '-') {
-                negative = true;
-                ++i;
-            }
-            if (i >= strLen) {
-                pp.setIndex(i);
-                pp.setErrorIndex(start);
-                throw new NumberException();
-            }
-            ch = str.charAt(i);
-            long longResult = 0L;
-            for (;;) {
-                if (ch >= '0' && ch <= '9') {
-                    longResult = longResult * 10 + ch - '0';
-                    if (++i >= strLen)
-                        break;
-                    ch = str.charAt(i);
-                }
-                else if (ch == '.' || ch == 'e' || ch == 'E') {
-                    double doubleResult = longResult;
-                    if (ch == '.') {
-                        if (++i >= strLen) {
-                            pp.setIndex(i);
-                            pp.setErrorIndex(start);
-                            throw new NumberException();
-                        }
-                        double increment = 0.1;
-                        while ((ch = str.charAt(i)) >= '0' && ch <= '9') {
-                            doubleResult += increment * (ch - '0');
-                            increment *= 0.1;
-                            if (++i >= strLen)
-                                break;
-                        }
-                    }
-                    if (i < strLen) {
-                        ch = str.charAt(i);
-                        if (ch == 'e' || ch == 'E') {
-                            if (++i >= strLen ||
-                                    !((ch = str.charAt(i)) >= '0' &&
-                                            ch <= '9')) {
-                                pp.setIndex(i);
-                                pp.setErrorIndex(start);
-                                throw new NumberException();
-                            }
-                            int exponent = 0;
-                            do {
-                                exponent = exponent * 10 + ch - '0';
-                                if (++i >= strLen)
-                                    break;
-                            } while ((ch = str.charAt(i)) >= '0' && ch <= '9');
-                            for (; exponent > 0; --exponent)
-                                doubleResult *= 10.0;
-                        }
-                    }
-                    pp.setIndex(i);
-                    return new Double(negative ? -doubleResult : doubleResult);
-                }
-                else
-                    break;
-            }
-            pp.setIndex(i);
-            return new Long(negative ? -longResult : longResult);
-        }
-
-        /**
-         * Extracts a string from the current position in the character
-         * sequence.  This assumes that the first character has already been
-         * confirmed to be a valid opening quote character.
-         *
-         * @param str   the character sequence
-         * @param pp    a <code>ParsePosition</code> object containing the
-         *              current index into the character sequence - this will be
-         *              updated to reflect the position after the string
-         * @return      the identifier
-         * @throws StringException on any errors
-         */
-        private static String parseString(CharSequence str, ParsePosition pp)
-                throws StringException {
-            StringBuffer buf = new StringBuffer();
-            int n = str.length();
-            int i = pp.getIndex();
-            char quote = str.charAt(i++);
-            boolean escape = false;
-            for (;;) {
-                if (i >= n) {
-                    pp.setIndex(i);
-                    pp.setErrorIndex(i);
-                    throw new StringException();
-                }
-                char ch = str.charAt(i);
-                if (escape) {
-                    if (ch != '\\' && ch != '"' && ch != '\'')
-                        buf.append('\\');
-                    buf.append(ch);
-                    escape = false;
-                }
-                else {
-                    if (ch == quote)
-                        break;
-                    if (ch == '\\')
-                        escape = true;
-                    else
-                        buf.append(ch);
-                }
-                ++i;
-            }
-            pp.setIndex(i + 1);
-            return buf.toString();
-        }
-
-        /**
-         * Skip past spaces in the character sequence.
-         *
-         * @param str  the character sequence
-         * @param pp   a <code>ParsePosition</code> object containing the
-         *             current index into the character sequence - this will be
-         *             updated to reflect the position of the next non-space
-         *             character
-         */
-        private static void skipSpaces(CharSequence str, ParsePosition pp) {
-            int i = pp.getIndex();
-            int n = str.length();
-            while (i < n && isSpace(str.charAt(i)))
-                ++i;
-            pp.setIndex(i);
-        }
-
-        /**
-         * Compare the characters at the current position in a character
-         * sequence with a given string.  If the string to be matched is an
-         * identifier name, the match is successful only if the next character
-         * is not a valid name character.
-         *
-         * @param str     the character sequence
-         * @param pp      a <code>ParsePosition</code> object containing the
-         *                current index into the character sequence - this will
-         *                be updated to reflect the position after the matched
-         *                string if the match was successful
-         * @param target  the target string
-         * @return        true if the string matches
-         */
-        private static boolean match(CharSequence str, ParsePosition pp,
-                CharSequence target) {
-            int pos = pp.getIndex();
-            for (int i = 0; i < target.length(); )
-                if (pos >= str.length() || str.charAt(pos++) !=
-                        target.charAt(i++))
-                    return false;
-            if (isIdentifierStart(target.charAt(0)) && pos < str.length() &&
-                    isIdentifierPart(str.charAt(pos)))
-                return false;
-            pp.setIndex(pos);
-            return true;
-        }
-
-        /**
-         * Compare the character at the current position in a character sequence
-         * with a given character.
-         *
-         * @param str     the character sequence
-         * @param pp      a <code>ParsePosition</code> object containing the
-         *                current index into the character sequence - this will
-         *                be updated to reflect the position after the matched
-         *                character if the match was successful
-         * @param target  the target character
-         * @return        true if the character matches
-         */
-        private static boolean match(CharSequence str, ParsePosition pp,
-                char target) {
-            int pos = pp.getIndex();
-            if (pos >= str.length() || str.charAt(pos) != target)
-                return false;
-            pp.setIndex(pos + 1);
-            return true;
-        }
-
-        /**
-         * Test character for space - includes HT (tab), NL (LF) and CR.
-         *
-         * @param ch    the character to test
-         * @return      true if character is a space
-         */
-        private static boolean isSpace(char ch) {
-            return ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r';
-        }
-
-        /**
-         * Test character for digit or dot.
-         *
-         * @param ch    the character to test
-         * @return      true if character is a digit or dot (period)
-         */
-        private static boolean isDigitOrDot(char ch) {
-            return ch >= '0' && ch <= '9' || ch == '.';
-        }
-
     }
 
     /**
-     * An interface to represent assignable expressions.  This is an extension
-     * to the JSTL 1.0 EL specification.
+     * An interface to represent assignable expressions.  This is an extension to the JSTL 1.0
+     * EL specification.
      */
     public static interface Assignable {
 
@@ -1556,9 +1232,9 @@ public abstract class Expression {
 
     /**
      * A class to represent a variable in an expression tree.  Objects of this
-     * class are generally returned by the <code>Resolver</code>.
+     * class are generally returned by the {@link Resolver}.
      *
-     * <p>This class contains no functionality; the <code>Resolver</code> must
+     * <p>This class contains no functionality; the {@link Resolver} must
      * return an implementation class which provides <code>evaluate()</code>
      * and <code>assign()</code> methods.</p>
      */
@@ -1568,17 +1244,16 @@ public abstract class Expression {
     }
 
     /**
-     * A class to represent a constant in an expression tree.  Objects of this
-     * class are created for constants in the expression.  The
-     * <code>optimize()</code> method will pre-evaluate operators with
-     * constant operands where possible.
+     * A class to represent a constant in an expression tree.  Objects of this class are created
+     * for constants in the expression.  The {@link #optimize()} method will pre-evaluate
+     * operators with constant operands where possible.
      */
     public static class Constant extends Expression {
 
         private Object value;
 
         /**
-         * Construct a <code>Constant</code> with a given object value.
+         * Construct a {@code Constant} with a given object value.
          *
          * @param value  the object
          */
@@ -1606,9 +1281,9 @@ public abstract class Expression {
         }
 
         /**
-         * Return <code>true</code> to indicate the expression is constant.
+         * Return {@code true} to indicate the expression is constant.
          *
-         * @return <code>true</code> - the expression is constant
+         * @return {@code true} - the expression is constant
          */
         @Override
         public boolean isConstant() {
@@ -1626,11 +1301,11 @@ public abstract class Expression {
         }
 
         /**
-         * Test for equality.  Return true only if the other object is a
-         * constant with the same value.
+         * Test for equality.  Return {@code true} only if the other object is a constant with
+         * the same value.
          *
          * @param o  the object for comparison
-         * @return   true if expressions are equal
+         * @return   {@code true} if expressions are equal
          * @see Object#equals(Object)
          */
         @Override
@@ -1655,10 +1330,9 @@ public abstract class Expression {
         }
 
         /**
-         * Convert to string.  This returns the string representation of the
-         * constant in the Expression Language.  String constants require
-         * special handling to ensure that quotes are used and special
-         * characters are escaped.
+         * Convert to string.  This returns the string representation of the constant in the
+         * Expression Language.  String constants require special handling to ensure that quotes
+         * are used and special characters are escaped.
          *
          * @return  a string representation of the constant
          */
@@ -1667,10 +1341,9 @@ public abstract class Expression {
             if (value == null)
                 return "null";
             if (value instanceof String) {
-                StringBuffer sb = new StringBuffer();
+                StringBuilder sb = new StringBuilder();
                 String str = (String)value;
-                char quote = str.indexOf('\'') >= 0 && str.indexOf('"') < 0 ?
-                        '"' : '\'';
+                char quote = str.indexOf('\'') >= 0 && str.indexOf('"') < 0 ? '"' : '\'';
                 sb.append(quote);
                 for (int i = 0, n = str.length(); i < n; ++i) {
                     char ch = str.charAt(i);
@@ -1681,19 +1354,17 @@ public abstract class Expression {
                 sb.append(quote);
                 return sb.toString();
             }
-            // note - for all other forms of constant generated by the parser,
-            // the standard toString() conversion on the object will produce the
-            // correct form of string; any constants generated by a Resolver
-            // must provide their own formatting, probably by subclassing
-            // Constant
+            // note - for all other forms of constant generated by the parser, the standard
+            // toString() conversion on the object will produce the correct form of string; any
+            // constants generated by a Resolver must provide their own formatting, probably by
+            // subclassing Constant
             return value.toString();
         }
 
     }
 
     /**
-     * A base class for all operators, both monadic (one operand) and diadic
-     * (two operands).
+     * A base class for all operators, both monadic (one operand) and diadic (two operands).
      */
     public static abstract class Operator extends Expression {
 
@@ -1727,8 +1398,8 @@ public abstract class Expression {
         }
 
         /**
-         * Optimize the subexpression.  The default behavior is to optimize the
-         * operand, then if it is constant, execute the operation.
+         * Optimize the subexpression.  The default behavior is to optimize the operand, then if
+         * it is constant, execute the operation.
          *
          * @return  the constant result or the operator itself
          */
@@ -1748,7 +1419,7 @@ public abstract class Expression {
         /**
          * Optimize the operand.
          *
-         * @return <code>true</code> if the operand is constant
+         * @return {@code true} if the operand is constant
          */
         public boolean optimizeRightOperand() {
             Expression optRight = right.optimize();
@@ -1757,28 +1428,28 @@ public abstract class Expression {
         }
 
         /**
-         * Get the priority of the operator.  The priority is used to determine
-         * the order of evaluation of an expression with multiple operations.
-         * For example, a + b * c is evaluated as (a + (b * c)).
+         * Get the priority of the operator.  The priority is used to determine the order of
+         * evaluation of an expression with multiple operations.  For example, a + b * c is
+         * evaluated as (a + (b * c)).
          *
          * @return  the priority
          */
         public abstract int getPriority();
 
         /**
-         * Get the name of the operator.  The name is the token which represents
-         * the operator in the Expression Language.
+         * Get the name of the operator.  The name is the token which represents the operator in
+         * the Expression Language.
          *
          * @return  the name
          */
         public abstract String getName();
 
         /**
-         * Test for equality.  Return true only if the other object is an
-         * <code>Operator</code> with an equal operand.
+         * Test for equality.  Return {@code true} only if the other object is an
+         * {@link Operator} with an equal operand.
          *
          * @param o  the object for comparison
-         * @return   true if expressions are equal
+         * @return   {@code true} if expressions are equal
          * @see Object#equals(Object)
          */
         @Override
@@ -1805,7 +1476,7 @@ public abstract class Expression {
          */
         @Override
         public String toString() {
-            StringBuffer sb = new StringBuffer();
+            StringBuilder sb = new StringBuilder();
             String name = getName();
             sb.append(name);
             Expression expr = getRight();
@@ -1861,8 +1532,8 @@ public abstract class Expression {
         }
 
         /**
-         * Optimize the subexpression.  The default behavior is to optimize the
-         * operands, then if both are constant, execute the operation.
+         * Optimize the subexpression.  The default behavior is to optimize the operands, then
+         * if both are constant, execute the operation.
          *
          * @return  the constant result or the operator itself
          */
@@ -1882,7 +1553,7 @@ public abstract class Expression {
         /**
          * Optimize the operands.
          *
-         * @return <code>true</code> if both operands are constant
+         * @return {@code true} if both operands are constant
          */
         public boolean optimizeOperands() {
             boolean rightConstant = optimizeRightOperand();
@@ -1892,41 +1563,40 @@ public abstract class Expression {
         }
 
         /**
-         * Return true if the operation is commutative.  The default is false.
+         * Return {@code true} if the operation is commutative.  The default is {@code false}.
          *
-         * @return false
+         * @return {@code false}
          */
         public boolean isCommutative() {
             return false;
         }
 
         /**
-         * Return true if the operation is associative.  The default is false.
+         * Return {@code true} if the operation is associative.  The default is {@code false}.
          *
-         * @return false
+         * @return {@code false}
          */
         public boolean isAssociative() {
             return false;
         }
 
         /**
-         * Return true if the operation is left-associative.  The default is
-         * true.
+         * Return {@code true} if the operation is left-associative.  The default is
+         * {@code true}.
          *
-         * @return true
+         * @return {@code true}
          */
         public boolean isLeftAssociative() {
             return true;
         }
 
         /**
-         * Test for equality.  Return true only if the other object is a
-         * <code>Diadic</code> operation with equal operands, or is
-         * commutative with equal operands reversed, or is associative and all
-         * operands match.
+         * Test for equality.  Return {@code true} only if the other object is a {@link Diadic}
+         * operation with equal operands, or is commutative with equal operands reversed, or is
+         * associative and all operands match.
          *
          * @param o  the object for comparison
-         * @return   true if expressions are equal
+         * @return   {@code true} if expressions are equal
          * @see Object#equals(Object)
          */
         @Override
@@ -1998,7 +1668,7 @@ public abstract class Expression {
          */
         @Override
         public String toString() {
-            StringBuffer sb = new StringBuffer();
+            StringBuilder sb = new StringBuilder();
             Expression expr = getLeft();
             if (expr instanceof Operator) {
                 sb.append('(');
@@ -2024,13 +1694,13 @@ public abstract class Expression {
     }
 
     /**
-     * A class to represent the indexing operation.  The expression language
-     * converts property references of the form 'object.property' to
-     * 'object["property"]', so both of these are handled by this operator.
-     * 
-     * <p>Much of the behavior of this class is implemented as static methods
-     * on the <code>Expression</code> class so that they may be accessed more
-     * easily from outside the class.</p>
+     * A class to represent the indexing operation.  The expression language converts property
+     * references of the form {@code object.property} to {@code object["property"]}, so both of
+     * these are handled by this operator.
+     *
+     * <p>Much of the behavior of this class is implemented as static methods on the
+     * {@code Expression} class so that they may be accessed more easily from outside the
+     * class.</p>
      */
     public static class Indexed extends Diadic implements Assignable {
 
@@ -2058,8 +1728,7 @@ public abstract class Expression {
         }
 
         /**
-         * Get the name of the operator (the token for this operator in an
-         * expression).
+         * Get the name of the operator (the token for this operator in an expression).
          *
          * @return the name
          */
@@ -2069,9 +1738,8 @@ public abstract class Expression {
         }
 
         /**
-         * Evaluate the subexpression.  The rules for this operation are given
-         * in the specification document referenced at the start of the
-         * <code>Expression</code> class.
+         * Evaluate the subexpression.  The rules for this operation are given in the
+         * specification document referenced at the start of the {@code Expression} class.
          *
          * @return  the object resulting from the indexing operation
          * @throws  EvaluationException on any errors
@@ -2099,11 +1767,11 @@ public abstract class Expression {
         }
 
         /**
-         * Test for equality.  Return true only if the other object is an
-         * <code>Indexed</code> operation with equal operands.
+         * Test for equality.  Return {@code true} only if the other object is an
+         * {@code Indexed} operation with equal operands.
          *
          * @param o  the object for comparison
-         * @return   true if expressions are equal
+         * @return   {@code true} if expressions are equal
          * @see Object#equals(Object)
          */
         @Override
@@ -2112,17 +1780,16 @@ public abstract class Expression {
         }
 
         /**
-         * Convert subexpression to string.  This operator requires special
-         * handling because of the syntax of indexing operations.
+         * Convert subexpression to string.  This operator requires special handling because of
+         * the syntax of indexing operations.
          *
          * @return  a string representation of the subexpression
          */
         @Override
         public String toString() {
-            StringBuffer sb = new StringBuffer();
+            StringBuilder sb = new StringBuilder();
             Expression expr = getLeft();
-            if (expr instanceof Operator &&
-                    ((Operator)expr).getPriority() < priority) {
+            if (expr instanceof Operator && ((Operator)expr).getPriority() < priority) {
                 sb.append('(');
                 sb.append(expr);
                 sb.append(')');
@@ -2161,8 +1828,8 @@ public abstract class Expression {
     }
 
     /**
-     * A class to represent the assignment operation.  This is an extension to
-     * the JSTL 1.0 EL specification.
+     * A class to represent the assignment operation.  This is an extension to the JSTL 1.0 EL
+     * specification.
      */
     public static class Assign extends Diadic {
 
@@ -2180,8 +1847,7 @@ public abstract class Expression {
         }
 
         /**
-         * Get the name of the operator (the token for this operator in an
-         * expression).
+         * Get the name of the operator (the token for this operator in an expression).
          *
          * @return the name
          */
@@ -2201,9 +1867,9 @@ public abstract class Expression {
         }
 
         /**
-         * Return false - the operation is right-associative.
+         * Return {@code false} - the operation is right-associative.
          *
-         * @return false
+         * @return {@code false}
          */
         @Override
         public boolean isLeftAssociative() {
@@ -2211,8 +1877,8 @@ public abstract class Expression {
         }
 
         /**
-         * Get the result type of this operator.  The result type is the type of
-         * the right operand.
+         * Get the result type of this operator.  The result type is the type of the right
+         * operand.
          *
          * @return  the result type of the operator
          */
@@ -2222,8 +1888,8 @@ public abstract class Expression {
         }
 
         /**
-         * Evaluate the subexpression.  The result of an assignment operation is
-         * the value assigned.
+         * Evaluate the subexpression.  The result of an assignment operation is the value
+         * assigned.
          *
          * @return  the object resulting from the assignment operation
          * @throws  EvaluationException on any errors
@@ -2239,11 +1905,10 @@ public abstract class Expression {
         }
 
         /**
-         * Optimize the subexpression.  The assignment operation can not be
-         * optimized, and the left operand can only be partially optimized - for
-         * example, if the left operand is <code>array[2+2]</code> the addition
-         * can be optimized but the indexing operation can not.  The right
-         * operand can be fully optimized.
+         * Optimize the subexpression.  The assignment operation can not be optimized, and the
+         * left operand can only be partially optimized - for example, if the left operand is
+         * {@code array[2+2]} the addition can be optimized but the indexing operation can not.
+         * The right operand can be fully optimized.
          *
          * @return  the operator itself
          */
@@ -2257,11 +1922,11 @@ public abstract class Expression {
         }
 
         /**
-         * Test for equality.  Return true only if the other object is an
-         * <code>Assign</code> operation with equal operands.
+         * Test for equality.  Return {@code true} only if the other object is an {@link Assign}
+         * operation with equal operands.
          *
          * @param o  the object for comparison
-         * @return   true if expressions are equal
+         * @return   {@code true} if expressions are equal
          * @see Object#equals(Object)
          */
         @Override
@@ -2272,8 +1937,8 @@ public abstract class Expression {
     }
 
     /**
-     * A class to represent the conditional expression ( <code>&#63;
-     * &#58;</code> ).  This is an extension to the JSTL 1.0 EL specification.
+     * A class to represent the conditional expression ( {@code ? :} ).  This is an extension to
+     * the JSTL 1.0 EL specification.
      */
     public static class Conditional extends Diadic {
 
@@ -2312,9 +1977,9 @@ public abstract class Expression {
         }
 
         /**
-         * Return false - the operation is right-associative.
+         * Return {@code false} - the operation is right-associative.
          *
-         * @return false
+         * @return {@code false}
          */
         @Override
         public boolean isLeftAssociative() {
@@ -2322,8 +1987,8 @@ public abstract class Expression {
         }
 
         /**
-         * Get the result type of this operator.  This is determined from the
-         * types of the operands of the <code>Else</code> operator.
+         * Get the result type of this operator.  This is determined from the types of the
+         * operands of the {@link Else} operator.
          *
          * @return  the result type of the operator
          */
@@ -2341,11 +2006,10 @@ public abstract class Expression {
         }
 
         /**
-         * Evaluate the conditional expression.  The result of the conditional
-         * expression is the left or the right operand of the
-         * <code>ElseExpression</code> which must be in the right operand
-         * position of this expression, depending on the boolean value of the
-         * left operand of this expression.
+         * Evaluate the conditional expression.  The result of the conditional expression is the
+         * left or the right operand of the {@link Else} expression which must be in the right
+         * operand position of this expression, depending on the boolean value of the left
+         * operand of this expression.
          *
          * @return  the object resulting from the conditional expression
          * @throws  EvaluationException on any errors
@@ -2362,12 +2026,12 @@ public abstract class Expression {
         }
 
         /**
-         * Optimize the conditional expression.  If the left operand is
-         * constant, the expression is optimized to the subexpression in either
-         * the left or the right operand of the <code>ElseExpression</code>
-         * which must be in the right operand position of this expression.
+         * Optimize the conditional expression.  If the left operand is constant, the expression
+         * is optimized to the subexpression in either the left or the right operand of the
+         * {@link Else} expression which must be in the right operand position of this
+         * expression.
          *
-         * @return the true or the false result, or the expression itself
+         * @return the {@code true} or the {@code false} result, or the expression itself
          */
         @Override
         public Expression optimize() {
@@ -2392,15 +2056,14 @@ public abstract class Expression {
         }
 
         /**
-         * Convert subexpression to string.  This operator requires special
-         * handling to ensure that the else pseudo-operator is not enclosed in
-         * parentheses.
+         * Convert subexpression to string.  This operator requires special handling to ensure
+         * that the else pseudo-operator is not enclosed in parentheses.
          *
          * @return  a string representation of the subexpression
          */
         @Override
         public String toString() {
-            StringBuffer sb = new StringBuffer();
+            StringBuilder sb = new StringBuilder();
             Expression expr = getLeft();
             if (expr instanceof Operator) {
                 sb.append('(');
@@ -2419,11 +2082,10 @@ public abstract class Expression {
     }
 
     /**
-     * A class to represent the else portion of a conditional expression
-     * ( <code>&#63; &#58;</code> ).  It is not so much an expression as a
-     * structure to hold two alternative results from the conditional
-     * expression, of which this must be the right operand.  This is an
-     * extension to the JSTL 1.0 EL specification.
+     * A class to represent the else portion of a conditional expression ( {@code ? :} ).  It is
+     * not so much an expression as a structure to hold two alternative results from the
+     * conditional expression, of which this must be the right operand.  This is an extension to
+     * the JSTL 1.0 EL specification.
      */
     public static class Else extends Diadic {
 
@@ -2441,8 +2103,7 @@ public abstract class Expression {
         }
 
         /**
-         * Get the name of the operator (the token for this operator in an
-         * expression).
+         * Get the name of the operator (the token for this operator in an expression).
          *
          * @return the name
          */
@@ -2462,9 +2123,9 @@ public abstract class Expression {
         }
 
         /**
-         * Return false - the operation is right-associative.
+         * Return {@code false} - the operation is right-associative.
          *
-         * @return false
+         * @return {@code false}
          */
         @Override
         public boolean isLeftAssociative() {
@@ -2500,9 +2161,9 @@ public abstract class Expression {
         }
 
         /**
-         * Evaluate the subexpression.  This method determines the type of
-         * operands supplied, then calls the appropriate <code>execute()</code>
-         * method in the implementing class to apply the operation.
+         * Evaluate the subexpression.  This method determines the type of operands supplied,
+         * then calls the appropriate {@code execute()} method in the implementing class to
+         * apply the operation.
          *
          * @return  the object resulting from the arithmetic operation
          * @throws  EvaluationException on any errors
@@ -2519,9 +2180,8 @@ public abstract class Expression {
         }
 
         /**
-         * Get the result type of this operator.  The result type of an
-         * arithmetic operation is always <code>{@link Number}</code> or a
-         * subclass.
+         * Get the result type of this operator.  The result type of an arithmetic operation is
+         * always {@link Number} or a subclass.
          *
          * @return  the result type of the operator
          */
@@ -2541,7 +2201,7 @@ public abstract class Expression {
         }
 
         /**
-         * Apply the operation to <code>long</code> operands.
+         * Apply the operation to {@code long} operands.
          *
          * @param left   the left operand
          * @param right  the right operand
@@ -2550,7 +2210,7 @@ public abstract class Expression {
         public abstract long execute(long left, long right);
 
         /**
-         * Apply the operation to <code>double</code> operands.
+         * Apply the operation to {@code double} operands.
          *
          * @param left   the left operand
          * @param right  the right operand
@@ -2579,8 +2239,7 @@ public abstract class Expression {
         }
 
         /**
-         * Get the name of the operator (the token for this operator in an
-         * expression).
+         * Get the name of the operator (the token for this operator in an expression).
          *
          * @return the name
          */
@@ -2600,9 +2259,9 @@ public abstract class Expression {
         }
 
         /**
-         * Return true - the operation is commutative.
+         * Return {@code true} - the operation is commutative.
          *
-         * @return true
+         * @return {@code true}
          */
         @Override
         public boolean isCommutative() {
@@ -2610,9 +2269,9 @@ public abstract class Expression {
         }
 
         /**
-         * Return true - the operation is associative.
+         * Return {@code true} - the operation is associative.
          *
-         * @return true
+         * @return {@code true}
          */
         @Override
         public boolean isAssociative() {
@@ -2620,7 +2279,7 @@ public abstract class Expression {
         }
 
         /**
-         * Apply the operation to <code>long</code> operands.
+         * Apply the operation to {@code long} operands.
          *
          * @param left   the left operand
          * @param right  the right operand
@@ -2632,7 +2291,7 @@ public abstract class Expression {
         }
 
         /**
-         * Apply the operation to <code>double</code> operands.
+         * Apply the operation to {@code double} operands.
          *
          * @param left   the left operand
          * @param right  the right operand
@@ -2644,8 +2303,8 @@ public abstract class Expression {
         }
 
         /**
-         * Optimize the subexpression.  In addition to the default optimization,
-         * check for multiply by 0 or 1.
+         * Optimize the subexpression.  In addition to the default optimization, check for
+         * multiply by 0 or 1.
          *
          * @return  the constant result or the operator itself
          */
@@ -2713,11 +2372,11 @@ public abstract class Expression {
         }
 
         /**
-         * Test for equality.  Return true only if the other object is a
-         * <code>Multiply</code> operation with equal operands.
+         * Test for equality.  Return {@code true} only if the other object is a
+         * {@code Multiply} operation with equal operands.
          *
          * @param o  the object for comparison
-         * @return   true if expressions are equal
+         * @return   {@code true} if expressions are equal
          * @see Object#equals(Object)
          */
         @Override
@@ -2729,8 +2388,8 @@ public abstract class Expression {
 
     /**
      * An implementation class for the divide operation.  This does not use the
-     * <code>Arithmetic</code> base class because the rules for the divide
-     * operator are different from those for the other operators.
+     * {@link Arithmetic} base class because the rules for the divide operator are different
+     * from those for the other operators.
      */
     public static class Divide extends Diadic {
 
@@ -2748,8 +2407,7 @@ public abstract class Expression {
         }
 
         /**
-         * Get the name of the operator (the token for this operator in an
-         * expression).
+         * Get the name of the operator (the token for this operator in an expression).
          *
          * @return the name
          */
@@ -2769,8 +2427,8 @@ public abstract class Expression {
         }
 
         /**
-         * Get the result type of this operator.  The result type of a
-         * divide operation is always <code>{@link Double}</code>.
+         * Get the result type of this operator.  The result type of a divide operation is
+         * always {@link Double}.
          *
          * @return  the result type of the operator
          */
@@ -2780,8 +2438,8 @@ public abstract class Expression {
         }
 
         /**
-         * Evaluate the subexpression.  This method converts both operands to
-         * <code>double</double> and performs the operation.
+         * Evaluate the subexpression.  This method converts both operands to {@code double} and
+         * performs the operation.
          *
          * @return  the object resulting from the divide operation
          * @throws  EvaluationException on any errors
@@ -2804,8 +2462,8 @@ public abstract class Expression {
         }
 
         /**
-         * Optimize the subexpression.  In addition to the default optimization,
-         * check for divisor of 1 or dividend of 0.
+         * Optimize the subexpression.  In addition to the default optimization, check for
+         * divisor of 1 or dividend of 0.
          *
          * @return  the constant result or the operator itself
          */
@@ -2855,11 +2513,11 @@ public abstract class Expression {
         }
 
         /**
-         * Test for equality.  Return true only if the other object is a
-         * <code>Divide</code> operation with equal operands.
+         * Test for equality.  Return {@code true} only if the other object is a {@code Divide}
+         * operation with equal operands.
          *
          * @param o  the object for comparison
-         * @return   true if expressions are equal
+         * @return   {@code true} if expressions are equal
          * @see Object#equals(Object)
          */
         @Override
@@ -2888,8 +2546,7 @@ public abstract class Expression {
         }
 
         /**
-         * Get the name of the operator (the token for this operator in an
-         * expression).
+         * Get the name of the operator (the token for this operator in an expression).
          *
          * @return the name
          */
@@ -2909,7 +2566,7 @@ public abstract class Expression {
         }
 
         /**
-         * Apply the operation to <code>long</code> operands.
+         * Apply the operation to {@code long} operands.
          *
          * @param left   the left operand
          * @param right  the right operand
@@ -2921,7 +2578,7 @@ public abstract class Expression {
         }
 
         /**
-         * Apply the operation to <code>double</code> operands.
+         * Apply the operation to {@code double} operands.
          *
          * @param left   the left operand
          * @param right  the right operand
@@ -2933,11 +2590,11 @@ public abstract class Expression {
         }
 
         /**
-         * Test for equality.  Return true only if the other object is a
-         * <code>Modulo</code> operation with equal operands.
+         * Test for equality.  Return {@code true} only if the other object is a {@code Modulo}
+         * operation with equal operands.
          *
          * @param o  the object for comparison
-         * @return   true if expressions are equal
+         * @return   {@code true} if expressions are equal
          * @see Object#equals(Object)
          */
         @Override
@@ -2966,8 +2623,7 @@ public abstract class Expression {
         }
 
         /**
-         * Get the name of the operator (the token for this operator in an
-         * expression).
+         * Get the name of the operator (the token for this operator in an expression).
          *
          * @return the name
          */
@@ -2987,9 +2643,9 @@ public abstract class Expression {
         }
 
         /**
-         * Return true - the operation is commutative.
+         * Return {@code true} - the operation is commutative.
          *
-         * @return true
+         * @return {@code true}
          */
         @Override
         public boolean isCommutative() {
@@ -2997,9 +2653,9 @@ public abstract class Expression {
         }
 
         /**
-         * Return true - the operation is associative.
+         * Return {@code true} - the operation is associative.
          *
-         * @return true
+         * @return {@code true}
          */
         @Override
         public boolean isAssociative() {
@@ -3007,7 +2663,7 @@ public abstract class Expression {
         }
 
         /**
-         * Apply the operation to <code>long</code> operands.
+         * Apply the operation to {@code long} operands.
          *
          * @param left   the left operand
          * @param right  the right operand
@@ -3019,7 +2675,7 @@ public abstract class Expression {
         }
 
         /**
-         * Apply the operation to <code>double</code> operands.
+         * Apply the operation to {@code double} operands.
          *
          * @param left   the left operand
          * @param right  the right operand
@@ -3031,8 +2687,8 @@ public abstract class Expression {
         }
 
         /**
-         * Optimize the subexpression.  In addition to the default optimization,
-         * check for addition of 0.
+         * Optimize the subexpression.  In addition to the default optimization, check for
+         * addition of 0.
          *
          * @return  the constant result or the operator itself
          */
@@ -3082,11 +2738,11 @@ public abstract class Expression {
         }
 
         /**
-         * Test for equality.  Return true only if the other object is a
-         * <code>Plus</code> operation with equal operands.
+         * Test for equality.  Return {@code true} only if the other object is a {@code Plus}
+         * operation with equal operands.
          *
          * @param o  the object for comparison
-         * @return   true if expressions are equal
+         * @return   {@code true} if expressions are equal
          * @see Object#equals(Object)
          */
         @Override
@@ -3115,8 +2771,7 @@ public abstract class Expression {
         }
 
         /**
-         * Get the name of the operator (the token for this operator in an
-         * expression).
+         * Get the name of the operator (the token for this operator in an expression).
          *
          * @return the name
          */
@@ -3136,7 +2791,7 @@ public abstract class Expression {
         }
 
         /**
-         * Apply the operation to <code>long</code> operands.
+         * Apply the operation to {@code long} operands.
          *
          * @param left   the left operand
          * @param right  the right operand
@@ -3148,7 +2803,7 @@ public abstract class Expression {
         }
 
         /**
-         * Apply the operation to <code>double</code> operands.
+         * Apply the operation to {@code double} operands.
          *
          * @param left   the left operand
          * @param right  the right operand
@@ -3160,8 +2815,8 @@ public abstract class Expression {
         }
 
         /**
-         * Optimize the subexpression.  In addition to the default optimization,
-         * check for subtraction of or from 0.
+         * Optimize the subexpression.  In addition to the default optimization, check for
+         * subtraction of or from 0.
          *
          * @return  the constant result or the operator itself
          */
@@ -3211,11 +2866,11 @@ public abstract class Expression {
         }
 
         /**
-         * Test for equality.  Return true only if the other object is a
-         * <code>Minus</code> operation with equal operands.
+         * Test for equality.  Return {@code true} only if the other object is a {@code Minus}
+         * operation with equal operands.
          *
          * @param o  the object for comparison
-         * @return   true if expressions are equal
+         * @return   {@code true} if expressions are equal
          * @see Object#equals(Object)
          */
         @Override
@@ -3226,8 +2881,7 @@ public abstract class Expression {
     }
 
     /**
-     * An interface to represent logical operations (including comparison and
-     * equality).
+     * An interface to represent logical operations (including comparison and equality).
      */
     public static interface Logical {
 
@@ -3259,8 +2913,7 @@ public abstract class Expression {
         }
 
         /**
-         * Get the name of the operator (the token for this operator in an
-         * expression).
+         * Get the name of the operator (the token for this operator in an expression).
          *
          * @return the name
          */
@@ -3280,8 +2933,8 @@ public abstract class Expression {
         }
 
         /**
-         * Get the result type of this operator.  The result type of an
-         * AND operation is always <code>{@link Boolean}</code>.
+         * Get the result type of this operator.  The result type of an AND operation is always
+         * {@link Boolean}.
          *
          * @return  the result type of the operator
          */
@@ -3291,8 +2944,8 @@ public abstract class Expression {
         }
 
         /**
-         * Evaluate the subexpression.  This method evaluates the left operand,
-         * and only if it is TRUE evaluates the right operand.
+         * Evaluate the subexpression.  This method evaluates the left operand, and only if it
+         * is {@code true} evaluates the right operand.
          *
          * @return  the boolean object resulting from the AND operation
          * @throws  EvaluationException on any errors
@@ -3305,9 +2958,8 @@ public abstract class Expression {
         }
 
         /**
-         * Optimize the subexpression.  Optimize the operands, then, if either
-         * operand is constant, return FALSE if it is FALSE, otherwise the other
-         * operand.
+         * Optimize the subexpression.  Optimize the operands, then, if either operand is
+         * constant, return {@code false} if it is {@code false}, otherwise the other operand.
          *
          * @return  the constant result or the operator itself
          */
@@ -3346,11 +2998,11 @@ public abstract class Expression {
         }
 
         /**
-         * Test for equality.  Return true only if the other object is an
-         * <code>And</code> operation with equal operands.
+         * Test for equality.  Return {@code true} only if the other object is an {@code And}
+         * operation with equal operands.
          *
          * @param o  the object for comparison
-         * @return   true if expressions are equal
+         * @return   {@code true} if expressions are equal
          * @see Object#equals(Object)
          */
         @Override
@@ -3379,8 +3031,7 @@ public abstract class Expression {
         }
 
         /**
-         * Get the name of the operator (the token for this operator in an
-         * expression).
+         * Get the name of the operator (the token for this operator in an expression).
          *
          * @return the name
          */
@@ -3400,8 +3051,8 @@ public abstract class Expression {
         }
 
         /**
-         * Get the result type of this operator.  The result type of an
-         * OR operation is always <code>{@link Boolean}</code>.
+         * Get the result type of this operator.  The result type of an OR operation is always
+         * {@link Boolean}.
          *
          * @return  the result type of the operator
          */
@@ -3411,8 +3062,8 @@ public abstract class Expression {
         }
 
         /**
-         * Evaluate the subexpression.  This method evaluates the left operand,
-         * and only if it is FALSE evaluates the right operand.
+         * Evaluate the subexpression.  This method evaluates the left operand, and only if it
+         * is {@code false} evaluates the right operand.
          *
          * @return  the boolean object resulting from the OR operation
          * @throws  EvaluationException on any errors
@@ -3425,9 +3076,8 @@ public abstract class Expression {
         }
 
         /**
-         * Optimize the subexpression.  Optimize the operands, then, if either
-         * operand is constant, return TRUE if it is TRUE, otherwise the other
-         * operand.
+         * Optimize the subexpression.  Optimize the operands, then, if either operand is
+         * constant, return {@code true} if it is {@code true}, otherwise the other operand.
          *
          * @return  the constant result or the operator itself
          */
@@ -3466,11 +3116,11 @@ public abstract class Expression {
         }
 
         /**
-         * Test for equality.  Return true only if the other object is an
-         * <code>Or</code> operation with equal operands.
+         * Test for equality.  Return {@code true} only if the other object is an {@code Or}
+         * operation with equal operands.
          *
          * @param o  the object for comparison
-         * @return   true if expressions are equal
+         * @return   {@code true} if expressions are equal
          * @see Object#equals(Object)
          */
         @Override
@@ -3508,8 +3158,8 @@ public abstract class Expression {
         }
 
         /**
-         * Get the result type of this operator.  The result type of a
-         * comparison operation is always <code>{@link Boolean}</code>.
+         * Get the result type of this operator.  The result type of a comparison operation is
+         * always {@link Boolean}.
          *
          * @return  the result type of the operator
          */
@@ -3519,8 +3169,8 @@ public abstract class Expression {
         }
 
         /**
-         * Evaluate the subexpression.  This method delegates the bulk of the
-         * work to the <code>compare()</code> method.
+         * Evaluate the subexpression.  This method delegates the bulk of the work to the
+         * {@code compare()} method.
          *
          * @return  the boolean object resulting from the comparison operation
          * @throws  EvaluationException on any errors
@@ -3531,9 +3181,9 @@ public abstract class Expression {
         }
 
         /**
-         * Compare the operands.  This method performs the comparison and calls
-         * the appropriate method on the implementing class to determine whether
-         * the comparison result is TRUE or FALSE in this case.
+         * Compare the operands.  This method performs the comparison and calls the appropriate
+         * method on the implementing class to determine whether the comparison result is
+         * {@code true} or {@code false} in this case.
          *
          * @return  the boolean result of the comparison
          * @throws  EvaluationException on any errors
@@ -3625,8 +3275,8 @@ public abstract class Expression {
         public abstract boolean greater();
 
         /**
-         * Optimize the subexpression.  Optimize the operands, and if both are
-         * constant, execute the operation.
+         * Optimize the subexpression.  Optimize the operands, and if both are constant, execute
+         * the operation.
          *
          * @return  the constant result or the operator itself
          */
@@ -3663,8 +3313,7 @@ public abstract class Expression {
         }
 
         /**
-         * Get the name of the operator (the token for this operator in an
-         * expression).
+         * Get the name of the operator (the token for this operator in an expression).
          *
          * @return the name
          */
@@ -3676,7 +3325,7 @@ public abstract class Expression {
         /**
          * The result if the left operand is less than the right.
          *
-         * @return  false
+         * @return  {@code false}
          */
         @Override
         public boolean less() {
@@ -3686,7 +3335,7 @@ public abstract class Expression {
         /**
          * The result if the operands are equal.
          *
-         * @return  false
+         * @return  {@code false}
          */
         @Override
         public boolean equal() {
@@ -3696,7 +3345,7 @@ public abstract class Expression {
         /**
          * The result if the left operand is greater than the right.
          *
-         * @return  true
+         * @return  {@code true}
          */
         @Override
         public boolean greater() {
@@ -3714,12 +3363,12 @@ public abstract class Expression {
         }
 
         /**
-         * Test for equality.  Return true only if the other object is a
-         * <code>GreaterThan</code> operation with equal operands, or a
-         * <code>LessThan</code> with equal operands reversed.
+         * Test for equality.  Return {@code true} only if the other object is a
+         * {@code GreaterThan} operation with equal operands, or a {@link LessThan} with equal
+         * operands reversed.
          *
          * @param o  the object for comparison
-         * @return   true if expressions are equal
+         * @return   {@code true} if expressions are equal
          * @see Object#equals(Object)
          */
         @Override
@@ -3729,8 +3378,7 @@ public abstract class Expression {
             if (!(o instanceof LessThan))
                 return false;
             LessThan op = (LessThan)o;
-            return getLeft().equals(op.getRight()) &&
-                            getRight().equals(op.getLeft());
+            return getLeft().equals(op.getRight()) && getRight().equals(op.getLeft());
         }
 
     }
@@ -3753,8 +3401,7 @@ public abstract class Expression {
         }
 
         /**
-         * Get the name of the operator (the token for this operator in an
-         * expression).
+         * Get the name of the operator (the token for this operator in an expression).
          *
          * @return the name
          */
@@ -3766,7 +3413,7 @@ public abstract class Expression {
         /**
          * The result if the left operand is less than the right.
          *
-         * @return  true
+         * @return  {@code true}
          */
         @Override
         public boolean less() {
@@ -3776,7 +3423,7 @@ public abstract class Expression {
         /**
          * The result if the operands are equal.
          *
-         * @return  false
+         * @return  {@code false}
          */
         @Override
         public boolean equal() {
@@ -3786,7 +3433,7 @@ public abstract class Expression {
         /**
          * The result if the left operand is greater than the right.
          *
-         * @return  false
+         * @return  {@code false}
          */
         @Override
         public boolean greater() {
@@ -3804,12 +3451,12 @@ public abstract class Expression {
         }
 
         /**
-         * Test for equality.  Return true only if the other object is a
-         * <code>LessThan</code> operation with equal operands, or a
-         * <code>GreaterThan</code> with equal operands reversed.
+         * Test for equality.  Return {@code true} only if the other object is a
+         * {@code LessThan} operation with equal operands, or a {@link GreaterThan} with equal
+         * operands reversed.
          *
          * @param o  the object for comparison
-         * @return   true if expressions are equal
+         * @return   {@code true} if expressions are equal
          * @see Object#equals(Object)
          */
         @Override
@@ -3819,8 +3466,7 @@ public abstract class Expression {
             if (!(o instanceof GreaterThan))
                 return false;
             GreaterThan op = (GreaterThan)o;
-            return getLeft().equals(op.getRight()) &&
-                            getRight().equals(op.getLeft());
+            return getLeft().equals(op.getRight()) && getRight().equals(op.getLeft());
         }
 
     }
@@ -3833,8 +3479,7 @@ public abstract class Expression {
         public static final String name = ">=";
 
         /**
-         * Construct a 'greater than or equal' operation with the given
-         * operands.
+         * Construct a 'greater than or equal' operation with the given operands.
          *
          * @param left   the left operand
          * @param right  the right operand
@@ -3844,8 +3489,7 @@ public abstract class Expression {
         }
 
         /**
-         * Get the name of the operator (the token for this operator in an
-         * expression).
+         * Get the name of the operator (the token for this operator in an expression).
          *
          * @return the name
          */
@@ -3857,7 +3501,7 @@ public abstract class Expression {
         /**
          * The result if the left operand is less than the right.
          *
-         * @return  false
+         * @return  {@code false}
          */
         @Override
         public boolean less() {
@@ -3867,7 +3511,7 @@ public abstract class Expression {
         /**
          * The result if the operands are equal.
          *
-         * @return  true
+         * @return  {@code true}
          */
         @Override
         public boolean equal() {
@@ -3877,7 +3521,7 @@ public abstract class Expression {
         /**
          * The result if the left operand is greater than the right.
          *
-         * @return  true
+         * @return  {@code true}
          */
         @Override
         public boolean greater() {
@@ -3895,12 +3539,12 @@ public abstract class Expression {
         }
 
         /**
-         * Test for equality.  Return true only if the other object is a
-         * <code>GreaterEqual</code> operation with equal operands, or a
-         * <code>LessEqual</code> with equal operands reversed.
+         * Test for equality.  Return {@code true} only if the other object is a
+         * {@code GreaterEqual} operation with equal operands, or a {@link LessEqual} with equal
+         * operands reversed.
          *
          * @param o  the object for comparison
-         * @return   true if expressions are equal
+         * @return   {@code true} if expressions are equal
          * @see Object#equals(Object)
          */
         @Override
@@ -3910,8 +3554,7 @@ public abstract class Expression {
             if (!(o instanceof LessEqual))
                 return false;
             LessEqual op = (LessEqual)o;
-            return getLeft().equals(op.getRight()) &&
-                            getRight().equals(op.getLeft());
+            return getLeft().equals(op.getRight()) && getRight().equals(op.getLeft());
         }
 
     }
@@ -3934,8 +3577,7 @@ public abstract class Expression {
         }
 
         /**
-         * Get the name of the operator (the token for this operator in an
-         * expression).
+         * Get the name of the operator (the token for this operator in an expression).
          *
          * @return the name
          */
@@ -3947,7 +3589,7 @@ public abstract class Expression {
         /**
          * The result if the left operand is less than the right.
          *
-         * @return  true
+         * @return  {@code true}
          */
         @Override
         public boolean less() {
@@ -3957,7 +3599,7 @@ public abstract class Expression {
         /**
          * The result if the operands are equal.
          *
-         * @return  true
+         * @return  {@code true}
          */
         @Override
         public boolean equal() {
@@ -3967,7 +3609,7 @@ public abstract class Expression {
         /**
          * The result if the left operand is greater than the right.
          *
-         * @return  false
+         * @return  {@code false}
          */
         @Override
         public boolean greater() {
@@ -3985,12 +3627,12 @@ public abstract class Expression {
         }
 
         /**
-         * Test for equality.  Return true only if the other object is a
-         * <code>LessEqual</code> operation with equal operands, or a
-         * <code>GreaterEqual</code> with equal operands reversed.
+         * Test for equality.  Return {@code true} only if the other object is a
+         * {@code LessEqual} operation with equal operands, or a {@link GreaterEqual} with equal
+         * operands reversed.
          *
          * @param o  the object for comparison
-         * @return   true if expressions are equal
+         * @return   {@code true} if expressions are equal
          * @see Object#equals(Object)
          */
         @Override
@@ -4000,8 +3642,7 @@ public abstract class Expression {
             if (!(o instanceof GreaterEqual))
                 return false;
             GreaterEqual op = (GreaterEqual)o;
-            return getLeft().equals(op.getRight()) &&
-                            getRight().equals(op.getLeft());
+            return getLeft().equals(op.getRight()) && getRight().equals(op.getLeft());
         }
 
     }
@@ -4034,9 +3675,9 @@ public abstract class Expression {
         }
 
         /**
-         * Return true - the operation is commutative.
+         * Return {@code true} - the operation is commutative.
          *
-         * @return true
+         * @return {@code true}
          */
         @Override
         public boolean isCommutative() {
@@ -4044,8 +3685,8 @@ public abstract class Expression {
         }
 
         /**
-         * Get the result type of this operator.  The result type of an
-         * equality operation is always <code>{@link Boolean}</code>.
+         * Get the result type of this operator.  The result type of an equality operation is
+         * always {@link Boolean}.
          *
          * @return  the result type of the operator
          */
@@ -4057,7 +3698,7 @@ public abstract class Expression {
         /**
          * Compare the two operands for equality.
          *
-         * @return  true if the operands are equal
+         * @return  {@code true} if the operands are equal
          * @throws  EvaluationException on any errors
          */
         public boolean compare() throws EvaluationException {
@@ -4112,8 +3753,7 @@ public abstract class Expression {
         }
 
         /**
-         * Get the name of the operator (the token for this operator in an
-         * expression).
+         * Get the name of the operator (the token for this operator in an expression).
          *
          * @return the name
          */
@@ -4123,8 +3763,8 @@ public abstract class Expression {
         }
 
         /**
-         * Evaluate the subexpression.  This method delegates the bulk of the
-         * work to the <code>compare()</code> method.
+         * Evaluate the subexpression.  This method delegates the bulk of the work to the
+         * {@code compare()} method.
          *
          * @return  the boolean object resulting from the comparison operation
          * @throws  EvaluationException on any errors
@@ -4135,8 +3775,8 @@ public abstract class Expression {
         }
 
         /**
-         * Optimize the subexpression.  Optimize the operands, and if both are
-         * constant, execute the operation.
+         * Optimize the subexpression.  Optimize the operands, and if both are constant, execute
+         * the operation.
          *
          * @return  the constant result or the operator itself
          */
@@ -4164,11 +3804,11 @@ public abstract class Expression {
         }
 
         /**
-         * Test for equality.  Return true only if the other object is an
-         * <code>Equal</code> operation with equal operands.
+         * Test for equality.  Return {@code true} only if the other object is an {@code Equal}
+         * operation with equal operands.
          *
          * @param o  the object for comparison
-         * @return   true if expressions are equal
+         * @return   {@code true} if expressions are equal
          * @see Object#equals(Object)
          */
         @Override
@@ -4196,8 +3836,7 @@ public abstract class Expression {
         }
 
         /**
-         * Get the name of the operator (the token for this operator in an
-         * expression).
+         * Get the name of the operator (the token for this operator in an expression).
          *
          * @return the name
          */
@@ -4207,8 +3846,8 @@ public abstract class Expression {
         }
 
         /**
-         * Evaluate the subexpression.  This method delegates the bulk of the
-         * work to the <code>compare()</code> method.
+         * Evaluate the subexpression.  This method delegates the bulk of the work to the
+         * {@code compare()} method.
          *
          * @return  the boolean object resulting from the comparison operation
          * @throws  EvaluationException on any errors
@@ -4219,8 +3858,8 @@ public abstract class Expression {
         }
 
         /**
-         * Optimize the subexpression.  Optimize the operands, and if both are
-         * constant, execute the operation.
+         * Optimize the subexpression.  Optimize the operands, and if both are constant, execute
+         * the operation.
          *
          * @return  the constant result or the operator itself
          */
@@ -4248,11 +3887,11 @@ public abstract class Expression {
         }
 
         /**
-         * Test for equality.  Return true only if the other object is a
-         * <code>NotEqual</code> operation with equal operands.
+         * Test for equality.  Return {@code true} only if the other object is a
+         * {@code NotEqual} operation with equal operands.
          *
          * @param o  the object for comparison
-         * @return   true if expressions are equal
+         * @return   {@code true} if expressions are equal
          * @see Object#equals(Object)
          */
         @Override
@@ -4263,8 +3902,8 @@ public abstract class Expression {
     }
 
     /**
-     * A class to represent the "wildcard pattern match" operation.  This is an
-     * extension to the JSTL 1.0 EL specification.
+     * A class to represent the "wildcard pattern match" operation.  This is an extension to the
+     * JSTL 1.0 EL specification.
      */
     public static class Match extends Diadic {
 
@@ -4273,7 +3912,7 @@ public abstract class Expression {
         public static final char multi = '*';
         public static final char single = '?';
         public static final char escape = '\\';
-        
+
         /**
          * Construct a 'match' operation with the given operands.
          *
@@ -4285,8 +3924,7 @@ public abstract class Expression {
         }
 
         /**
-         * Get the name of the operator (the token for this operator in an
-         * expression).
+         * Get the name of the operator (the token for this operator in an expression).
          *
          * @return the name
          */
@@ -4306,8 +3944,8 @@ public abstract class Expression {
         }
 
         /**
-         * Get the result type of this operator.  The result type of a match
-         * operation is always <code>{@link Boolean}</code>.
+         * Get the result type of this operator.  The result type of a match operation is always
+         * {@link Boolean}.
          *
          * @return  the result type of the operator
          */
@@ -4317,8 +3955,8 @@ public abstract class Expression {
         }
 
         /**
-         * Evaluate the subexpression.  Match the left operand string against
-         * the right operand pattern.
+         * Evaluate the subexpression.  Match the left operand string against the right operand
+         * pattern.
          *
          * @return the boolean result of the pattern match operation
          * @throws EvaluationException if the operands are not strings or null
@@ -4337,11 +3975,11 @@ public abstract class Expression {
         }
 
         /**
-         * Test for equality.  Return true only if the other object is a
-         * <code>Match</code> operation with equal operands.
+         * Test for equality.  Return {@code true} only if the other object is a {@code Match}
+         * operation with equal operands.
          *
          * @param o  the object for comparison
-         * @return   true if expressions are equal
+         * @return   {@code true} if expressions are equal
          * @see Object#equals(Object)
          */
         @Override
@@ -4356,7 +3994,7 @@ public abstract class Expression {
          * @param strIndex the offset within the string
          * @param pat      the pattern
          * @param patIndex the offset within the pattern
-         * @return         true if the string matches the pattern
+         * @return         {@code true} if the string matches the pattern
          */
         private static boolean match(String str, int strIndex, String pat,
                 int patIndex) {
@@ -4398,8 +4036,8 @@ public abstract class Expression {
     }
 
     /**
-     * A class to represent the string concatenation (join) operation.  This is
-     * an extension to the JSTL 1.0 EL specification.
+     * A class to represent the string concatenation (join) operation.  This is an extension to
+     * the JSTL 1.0 EL specification.
      */
     public static class Join extends Diadic {
 
@@ -4417,8 +4055,7 @@ public abstract class Expression {
         }
 
         /**
-         * Get the name of the operator (the token for this operator in an
-         * expression).
+         * Get the name of the operator (the token for this operator in an expression).
          *
          * @return the name
          */
@@ -4438,8 +4075,8 @@ public abstract class Expression {
         }
 
         /**
-         * Get the result type of this operator.  The result type of a join
-         * operation is always <code>{@link String}</code>.
+         * Get the result type of this operator.  The result type of a join operation is always
+         * {@link String}.
          *
          * @return  the result type of the operator
          */
@@ -4449,8 +4086,8 @@ public abstract class Expression {
         }
 
         /**
-         * Optimize the subexpression.  In addition to the default optimization,
-         * check for join with null or zero-length string.
+         * Optimize the subexpression.  In addition to the default optimization, check for join
+         * with null or zero-length string.
          *
          * @return  the constant result or the operator itself
          */
@@ -4482,8 +4119,7 @@ public abstract class Expression {
         }
 
         /**
-         * Evaluate the subexpression.  Concatenate the left and right operands
-         * (as strings).
+         * Evaluate the subexpression.  Concatenate the left and right operands (as strings).
          *
          * @return the string result of the join operation
          * @throws EvaluationException on any errors
@@ -4499,11 +4135,11 @@ public abstract class Expression {
         }
 
         /**
-         * Test for equality.  Return true only if the other object is a
-         * <code>Join</code> operation with equal operands.
+         * Test for equality.  Return {@code true} only if the other object is a {@code Join}
+         * operation with equal operands.
          *
          * @param o  the object for comparison
-         * @return   true if expressions are equal
+         * @return   {@code true} if expressions are equal
          * @see Object#equals(Object)
          */
         @Override
@@ -4514,10 +4150,9 @@ public abstract class Expression {
     }
 
     /**
-     * A dummy operator to represent parentheses in an expression.  By making
-     * the contents of the parentheses the right operand of the expression,
-     * the operator precedence search is prevented from scanning the
-     * sub-expression.
+     * A dummy operator to represent parentheses in an expression.  By making the contents of
+     * the parentheses the right operand of the expression, the operator precedence search is
+     * prevented from scanning the sub-expression.
      */
     public static class Parentheses extends Operator {
 
@@ -4534,8 +4169,7 @@ public abstract class Expression {
         }
 
         /**
-         * Get the name of the operator (the token for this operator in an
-         * expression).
+         * Get the name of the operator (the token for this operator in an expression).
          *
          * @return the name
          */
@@ -4555,8 +4189,8 @@ public abstract class Expression {
         }
 
         /**
-         * Get the result type of this operator.  The result type of this
-         * operator is the result type of its right operand.
+         * Get the result type of this operator.  The result type of this operator is the result
+         * type of its right operand.
          *
          * @return  the result type of the operator
          */
@@ -4566,8 +4200,7 @@ public abstract class Expression {
         }
 
         /**
-         * Evaluate the subexpression.  This just returns the evaluation of the
-         * operand.
+         * Evaluate the subexpression.  This just returns the evaluation of the operand.
          *
          * @return  the result of the evaluation of the operand
          * @throws  EvaluationException on any errors
@@ -4578,9 +4211,9 @@ public abstract class Expression {
         }
 
         /**
-         * Optimize the subexpression.  This method calls the parent class to
-         * optimize the operand, then returns the operand, because the dummy
-         * operator no longer has any value.
+         * Optimize the subexpression.  This method calls the parent class to optimize the
+         * operand, then returns the operand, because the dummy operator no longer has any
+         * value.
          *
          * @return  the operand
          */
@@ -4591,11 +4224,11 @@ public abstract class Expression {
         }
 
         /**
-         * Test for equality.  Return true only if the other object is a
-         * <code>Parentheses</code> with an equal operand.
+         * Test for equality.  Return {@code true} only if the other object is a
+         * {@code Parentheses} with an equal operand.
          *
          * @param o  the object for comparison
-         * @return   true if expressions are equal
+         * @return   {@code true} if expressions are equal
          * @see Object#equals(Object)
          */
         @Override
@@ -4610,7 +4243,7 @@ public abstract class Expression {
          */
         @Override
         public String toString() {
-            StringBuffer sb = new StringBuffer();
+            StringBuilder sb = new StringBuilder();
             sb.append('(');
             sb.append(getRight());
             sb.append(')');
@@ -4637,8 +4270,7 @@ public abstract class Expression {
         }
 
         /**
-         * Get the name of the operator (the token for this operator in an
-         * expression).
+         * Get the name of the operator (the token for this operator in an expression).
          *
          * @return the name
          */
@@ -4658,8 +4290,8 @@ public abstract class Expression {
         }
 
         /**
-         * Get the result type of this operator.  The result type of an
-         * arithmetic operation is always <code>{@link Number}</code>.
+         * Get the result type of this operator.  The result type of an arithmetic operation is
+         * always {@link Number}.
          *
          * @return  the result type of the operator
          */
@@ -4669,8 +4301,7 @@ public abstract class Expression {
         }
 
         /**
-         * Evaluate the subexpression.  Evaluate the operand and apply the
-         * negate operation.
+         * Evaluate the subexpression.  Evaluate the operand and apply the negate operation.
          *
          * @return  the object resulting from the negate operation
          * @throws  EvaluationException on any errors
@@ -4708,11 +4339,11 @@ public abstract class Expression {
         }
 
         /**
-         * Test for equality.  Return true only if the other object is a
-         * <code>Negate</code> operation with an equal operand.
+         * Test for equality.  Return {@code true} only if the other object is a {@code Negate}
+         * operation with an equal operand.
          *
          * @param o  the object for comparison
-         * @return   true if expressions are equal
+         * @return   {@code true} if expressions are equal
          * @see Object#equals(Object)
          */
         @Override
@@ -4740,8 +4371,7 @@ public abstract class Expression {
         }
 
         /**
-         * Get the name of the operator (the token for this operator in an
-         * expression).
+         * Get the name of the operator (the token for this operator in an expression).
          *
          * @return the name
          */
@@ -4761,8 +4391,8 @@ public abstract class Expression {
         }
 
         /**
-         * Get the result type of this operator.  The result type of a
-         * logical operation is always <code>{@link Boolean}</code>.
+         * Get the result type of this operator.  The result type of a logical operation is
+         * always {@link Boolean}.
          *
          * @return  the result type of the operator
          */
@@ -4772,8 +4402,8 @@ public abstract class Expression {
         }
 
         /**
-         * Evaluate the subexpression.  Evaluate the operand and return the
-         * boolean object corresponding to its logical inversion.
+         * Evaluate the subexpression.  Evaluate the operand and return the boolean object
+         * corresponding to its logical inversion.
          *
          * @return  the object resulting from the NOT operation
          * @throws  EvaluationException on any errors
@@ -4784,14 +4414,12 @@ public abstract class Expression {
         }
 
         /**
-         * Optimize the subexpression.  This method calls the parent class to
-         * optimize the operand, and attempts to logically invert comparison,
-         * equality and logical operations.  Then, if the operand is constant,
-         * it attempts to apply the operation.  If this fails the optimization
-         * is dropped.
+         * Optimize the subexpression.  This method calls the parent class to optimize the
+         * operand, and attempts to logically invert comparison, equality and logical
+         * operations.  Then, if the operand is constant, it attempts to apply the operation.
+         * If this fails the optimization is dropped.
          *
-         * @return  the inverted operation, the constant result, or the operator
-         *          itself
+         * @return  the inverted operation, the constant result, or the operator itself
          */
         @Override
         public Expression optimize() {
@@ -4821,11 +4449,11 @@ public abstract class Expression {
         }
 
         /**
-         * Test for equality.  Return true only if the other object is a
-         * <code>Not</code> operation with an equal operand.
+         * Test for equality.  Return {@code true} only if the other object is a {@code Not}
+         * operation with an equal operand.
          *
          * @param o  the object for comparison
-         * @return   true if expressions are equal
+         * @return   {@code true} if expressions are equal
          * @see Object#equals(Object)
          */
         @Override
@@ -4853,8 +4481,7 @@ public abstract class Expression {
         }
 
         /**
-         * Get the name of the operator (the token for this operator in an
-         * expression).
+         * Get the name of the operator (the token for this operator in an expression).
          *
          * @return the name
          */
@@ -4874,8 +4501,8 @@ public abstract class Expression {
         }
 
         /**
-         * Get the result type of this operator.  The result type of a test for
-         * empty operation is always <code>{@link Boolean}</code>.
+         * Get the result type of this operator.  The result type of a test for empty operation
+         * is always {@link Boolean}.
          *
          * @return  the result type of the operator
          */
@@ -4885,8 +4512,8 @@ public abstract class Expression {
         }
 
         /**
-         * Evaluate the subexpression.  Evaluate the operand and apply the
-         * rules for testing for empty.
+         * Evaluate the subexpression.  Evaluate the operand and apply the rules for testing for
+         * empty.
          *
          * @return  the object resulting from the 'test for empty' operation
          * @throws  EvaluationException on any errors
@@ -4910,11 +4537,11 @@ public abstract class Expression {
         }
 
         /**
-         * Test for equality.  Return true only if the other object is a
-         * <code>Empty</code> operation with an equal operand.
+         * Test for equality.  Return {@code true} only if the other object is an {@code Empty}
+         * operation with an equal operand.
          *
          * @param o  the object for comparison
-         * @return   true if expressions are equal
+         * @return   {@code true} if expressions are equal
          * @see Object#equals(Object)
          */
         @Override
@@ -4925,8 +4552,8 @@ public abstract class Expression {
     }
 
     /**
-     * A class to represent the 'convert to upper case' operation.  This is an
-     * extension to the JSTL 1.0 EL specification.
+     * A class to represent the 'convert to upper case' operation.  This is an extension to the
+     * JSTL 1.0 EL specification.
      */
     public static class ToUpper extends Operator {
 
@@ -4943,8 +4570,7 @@ public abstract class Expression {
         }
 
         /**
-         * Get the name of the operator (the token for this operator in an
-         * expression).
+         * Get the name of the operator (the token for this operator in an expression).
          *
          * @return the name
          */
@@ -4964,8 +4590,8 @@ public abstract class Expression {
         }
 
         /**
-         * Get the result type of this operator.  The result type of a case
-         * conversion operation is always <code>{@link String}</code>.
+         * Get the result type of this operator.  The result type of a case conversion operation
+         * is always {@link String}.
          *
          * @return  the result type of the operator
          */
@@ -4975,8 +4601,8 @@ public abstract class Expression {
         }
 
         /**
-         * Evaluate the subexpression.  Evaluate the operand as a
-         * <code>String</code> and convert it to upper case.
+         * Evaluate the subexpression.  Evaluate the operand as a {@link String} and convert it
+         * to upper case.
          *
          * @return  the converted string
          * @throws  EvaluationException on any errors
@@ -4987,11 +4613,11 @@ public abstract class Expression {
         }
 
         /**
-         * Test for equality.  Return true only if the other object is a
-         * <code>ToUpper</code> operation with an equal operand.
+         * Test for equality.  Return {@code true} only if the other object is a {@code ToUpper}
+         * operation with an equal operand.
          *
          * @param o  the object for comparison
-         * @return   true if expressions are equal
+         * @return   {@code true} if expressions are equal
          * @see Object#equals(Object)
          */
         @Override
@@ -5002,8 +4628,8 @@ public abstract class Expression {
     }
 
     /**
-     * A class to represent the 'convert to lower case' operation.  This is an
-     * extension to the JSTL 1.0 EL specification.
+     * A class to represent the 'convert to lower case' operation.  This is an extension to the
+     * JSTL 1.0 EL specification.
      */
     public static class ToLower extends Operator {
 
@@ -5020,8 +4646,7 @@ public abstract class Expression {
         }
 
         /**
-         * Get the name of the operator (the token for this operator in an
-         * expression).
+         * Get the name of the operator (the token for this operator in an expression).
          *
          * @return the name
          */
@@ -5041,8 +4666,8 @@ public abstract class Expression {
         }
 
         /**
-         * Get the result type of this operator.  The result type of a case
-         * conversion operation is always <code>{@link String}</code>.
+         * Get the result type of this operator.  The result type of a case conversion operation
+         * is always {@link String}.
          *
          * @return  the result type of the operator
          */
@@ -5052,8 +4677,8 @@ public abstract class Expression {
         }
 
         /**
-         * Evaluate the subexpression.  Evaluate the operand as a
-         * <code>String</code> and convert it to lower case.
+         * Evaluate the subexpression.  Evaluate the operand as a {@link String} and convert it
+         * to lower case.
          *
          * @return  the converted string
          * @throws  EvaluationException on any errors
@@ -5064,11 +4689,11 @@ public abstract class Expression {
         }
 
         /**
-         * Test for equality.  Return true only if the other object is a
-         * <code>ToUpper</code> operation with an equal operand.
+         * Test for equality.  Return {@code true} only if the other object is a {@code ToUpper}
+         * operation with an equal operand.
          *
          * @param o  the object for comparison
-         * @return   true if expressions are equal
+         * @return   {@code true} if expressions are equal
          * @see Object#equals(Object)
          */
         @Override
@@ -5079,8 +4704,8 @@ public abstract class Expression {
     }
 
     /**
-     * A class to represent the <code>length</code> operation.  This is an
-     * extension to the JSTL 1.0 EL specification.
+     * A class to represent the {@code length} operation.  This is an extension to the JSTL 1.0
+     * EL specification.
      */
     public static class Length extends Operator {
 
@@ -5088,7 +4713,7 @@ public abstract class Expression {
         public static final int priority = 7;
 
         /**
-         * Construct a <code>length</code> operator with the given operand.
+         * Construct a {@code length} operator with the given operand.
          *
          * @param operand  the right operand
          */
@@ -5097,8 +4722,7 @@ public abstract class Expression {
         }
 
         /**
-         * Get the name of the operator (the token for this operator in an
-         * expression).
+         * Get the name of the operator (the token for this operator in an expression).
          *
          * @return the name
          */
@@ -5118,8 +4742,8 @@ public abstract class Expression {
         }
 
         /**
-         * Get the result type of this operator.  The result type of a length
-         * operation is always <code>{@link Integer}</code>.
+         * Get the result type of this operator.  The result type of a length operation is
+         * always {@link Integer}.
          *
          * @return  the result type of the operator
          */
@@ -5129,8 +4753,8 @@ public abstract class Expression {
         }
 
         /**
-         * Optimize the subexpression.  The operand is optimized, but no attempt
-         * is made to optimize this operation.
+         * Optimize the subexpression.  The operand is optimized, but no attempt is made to
+         * optimize this operation.
          *
          * @return  the operator itself
          */
@@ -5141,9 +4765,8 @@ public abstract class Expression {
         }
 
         /**
-         * Evaluate the subexpression.  Evaluate the operand and, if it is a
-         * <code>Map</code>, <code>List</code> or array, return the number of
-         * elements.
+         * Evaluate the subexpression.  Evaluate the operand and, if it is a {@link Map},
+         * {@link List} or array, return the number of elements.
          *
          * @return  the length of the array
          * @throws  EvaluationException on any errors
@@ -5163,11 +4786,11 @@ public abstract class Expression {
         }
 
         /**
-         * Test for equality.  Return true only if the other object is a
-         * <code>Length</code> operation with an equal operand.
+         * Test for equality.  Return {@code true} only if the other object is a {@code Length}
+         * operation with an equal operand.
          *
          * @param o  the object for comparison
-         * @return   true if expressions are equal
+         * @return   {@code true} if expressions are equal
          * @see Object#equals(Object)
          */
         @Override
@@ -5178,8 +4801,8 @@ public abstract class Expression {
     }
 
     /**
-     * A class to represent the <code>sum</code> operation.  This is an
-     * extension to the JSTL 1.0 EL specification.
+     * A class to represent the <code>sum</code> operation.  This is an extension to the JSTL
+     * 1.0 EL specification.
      */
     public static class Sum extends Operator {
 
@@ -5187,7 +4810,7 @@ public abstract class Expression {
         public static final int priority = 7;
 
         /**
-         * Construct a <code>sum</code> operator with the given operand.
+         * Construct a {@code sum} operator with the given operand.
          *
          * @param operand  the right operand
          */
@@ -5196,8 +4819,7 @@ public abstract class Expression {
         }
 
         /**
-         * Get the name of the operator (the token for this operator in an
-         * expression).
+         * Get the name of the operator (the token for this operator in an expression).
          *
          * @return the name
          */
@@ -5217,8 +4839,8 @@ public abstract class Expression {
         }
 
         /**
-         * Get the result type of this operator.  The result type of a sum
-         * operation is <code>{@link Number}</code>.
+         * Get the result type of this operator.  The result type of a sum operation is
+         * {@link Number}.
          *
          * @return  the result type of the operator
          */
@@ -5228,8 +4850,8 @@ public abstract class Expression {
         }
 
         /**
-         * Optimize the subexpression.  The operand is optimized, but no attempt
-         * is made to optimize this operation.
+         * Optimize the subexpression.  The operand is optimized, but no attempt is made to
+         * optimize this operation.
          *
          * @return  the operator itself
          */
@@ -5240,9 +4862,8 @@ public abstract class Expression {
         }
 
         /**
-         * Evaluate the subexpression.  Evaluate the operand and, if it is a
-         * <code>Map</code>, <code>List</code> or array, return the sum of the
-         * elements.
+         * Evaluate the subexpression.  Evaluate the operand and, if it is a {@link Map},
+         * {@link List} or array, return the sum of the elements.
          *
          * @return  the length of the array
          * @throws  EvaluationException on any errors
@@ -5264,16 +4885,14 @@ public abstract class Expression {
         }
 
         /**
-         * Calculate the sum.  The sum is returned as a <code>Long</code> if all
-         * the values are integral, or a <code>Double</code> otherwise.
+         * Calculate the sum.  The sum is returned as a {@code Long} if all the values are
+         * integral, or a {@code Double} otherwise.
          *
-         * @param i an <code>Iterator</code> over the array or <code>List</code>
-         *          or <code>Map</code>
-         * @return a <code>Long</code> or <code>Double</code> containing the sum
-         * @throws ClassCastException if an element is not a <code>Number</code>
-         *         or <code>String</code>
-         * @throws NumberFormatException if a <code>String</code> element can
-         *         not be converted to a number
+         * @param i an {@link Iterator} over the array or {@link List} or {@link Map}
+         * @return a {@code Long} or {@code Double} containing the sum
+         * @throws ClassCastException if an element is not a {@link Number} or {@link String}
+         * @throws NumberFormatException if a {@link String} element can not be converted to a
+         *         number
          */
         private Object calculateSum(Iterator<?> i) {
             long longTotal = 0L;
@@ -5304,11 +4923,11 @@ public abstract class Expression {
         }
 
         /**
-         * Test for equality.  Return true only if the other object is a
-         * <code>Sum</code> operation with an equal operand.
+         * Test for equality.  Return {@code true} only if the other object is a {@code Sum}
+         * operation with an equal operand.
          *
          * @param o  the object for comparison
-         * @return   true if expressions are equal
+         * @return   {@code true} if expressions are equal
          * @see Object#equals(Object)
          */
         @Override
@@ -5327,7 +4946,7 @@ public abstract class Expression {
         private int index;
 
         /**
-         * Construct an <code>ArrayIterator</code> with the given array.
+         * Construct an {@code ArrayIterator} with the given array.
          *
          * @param  array  the array
          * @throws IllegalArgumentException if the argument is not an array
@@ -5340,9 +4959,9 @@ public abstract class Expression {
         }
 
         /**
-         * Return true if the iterator has more values.
+         * Return {@code true} if the iterator has more values.
          *
-         * @return <code>true</code> if the iterator has more values
+         * @return {@code true} if the iterator has more values
          */
         @Override
         public boolean hasNext() {
@@ -5376,7 +4995,7 @@ public abstract class Expression {
 
     /**
      * A class to represent the concatenation pseudo-expression created by the
-     * <code>parseSubstitution()</code> method.
+     * {@code parseSubstitution()} method.
      */
     public static class Concat extends Expression {
 
@@ -5408,8 +5027,8 @@ public abstract class Expression {
         }
 
         /**
-         * Get the result type of this operator.  The result type of a
-         * concatenation operation is always <code>{@link String}</code>.
+         * Get the result type of this operator.  The result type of a concatenation operation
+         * is always {@link String}.
          *
          * @return  the result type of the operator
          */
@@ -5419,24 +5038,22 @@ public abstract class Expression {
         }
 
         /**
-         * Evaluate the subexpression.  Evaluate each element and add it to an
-         * output string.
+         * Evaluate the subexpression.  Evaluate each element and add it to an output string.
          *
          * @return  the string concatenation of all the elements
          * @throws  EvaluationException on any errors
          */
         @Override
         public Object evaluate() throws EvaluationException {
-            StringBuffer sb = new StringBuffer();
+            StringBuilder sb = new StringBuilder();
             for (int i = 0; i < num; ++i)
                 sb.append(array[i].asString());
             return sb.toString();
         }
 
         /**
-         * Optimize the subexpression.  Each element is individually optimized,
-         * constant empty strings are dropped and adjacent constant strings are
-         * combined.
+         * Optimize the subexpression.  Each element is individually optimized, constant empty
+         * strings are dropped and adjacent constant strings are combined.
          *
          * @return  the optimized concatenation operation
          */
@@ -5488,10 +5105,9 @@ public abstract class Expression {
         }
 
         /**
-         * Get the result of the concatenation as a single expression.  If the
-         * concatenation resulted from the parse of a string consisting of a
-         * single expression, return that expression; otherwise return the
-         * concatenation expression.
+         * Get the result of the concatenation as a single expression.  If the concatenation
+         * resulted from the parse of a string consisting of a single expression, return that
+         * expression; otherwise return the concatenation expression.
          *
          * @return the result of the concatenation as a single expression
          */
@@ -5502,11 +5118,11 @@ public abstract class Expression {
         }
 
         /**
-         * Test for equality.  Return true only if the other object is a
-         * <code>Concat</code> operation with equal operands.
+         * Test for equality.  Return {@code true} only if the other object is a {@code Concat}
+         * operation with equal operands.
          *
          * @param o  the object for comparison
-         * @return   true if expressions are equal
+         * @return   {@code true} if expressions are equal
          * @see Object#equals(Object)
          */
         @Override
@@ -5539,15 +5155,15 @@ public abstract class Expression {
     }
 
     /**
-     * A class to represent all exceptions in the expression system, both
-     * parsing and evaluation exceptions.
+     * A class to represent all exceptions in the expression system, both parsing and evaluation
+     * exceptions.
      */
     public static class ExpressionException extends Exception {
 
-        private static final long serialVersionUID = 1L;
+        private static final long serialVersionUID = -3641819526563992578L;
 
         /**
-         * Construct an <code>ExpressionException</code> with the given message.
+         * Construct an {@code ExpressionException} with the given message.
          *
          * @param message  the message
          */
@@ -5562,10 +5178,10 @@ public abstract class Expression {
      */
     public static class ParseException extends ExpressionException {
 
-        private static final long serialVersionUID = 1L;
+        private static final long serialVersionUID = -3286750214318116469L;
 
         /**
-         * Construct a <code>ParseException</code> with the given message.
+         * Construct a {@code ParseException} with the given message.
          *
          * @param message  the message
          */
@@ -5580,10 +5196,10 @@ public abstract class Expression {
      */
     public static class UnmatchedParenthesisException extends ParseException {
 
-        private static final long serialVersionUID = 1L;
+        private static final long serialVersionUID = 1661428115028450303L;
 
         /**
-         * Construct a <code>UnmatchedParenthesisException</code>.
+         * Construct an {@code UnmatchedParenthesisException}.
          */
         public UnmatchedParenthesisException() {
             super("unmatched.parenthesis");
@@ -5596,10 +5212,10 @@ public abstract class Expression {
      */
     public static class UnmatchedBracketException extends ParseException {
 
-        private static final long serialVersionUID = 1L;
+        private static final long serialVersionUID = -8072205275825609727L;
 
         /**
-         * Construct a <code>UnmatchedBracketException</code>.
+         * Construct an {@code UnmatchedBracketException}.
          */
         public UnmatchedBracketException() {
             super("unmatched.bracket");
@@ -5612,10 +5228,10 @@ public abstract class Expression {
      */
     public static class UnmatchedBraceException extends ParseException {
 
-        private static final long serialVersionUID = 1L;
+        private static final long serialVersionUID = -2011622722123078308L;
 
         /**
-         * Construct a <code>UnmatchedBraceException</code>.
+         * Construct an {@code UnmatchedBraceException}.
          */
         public UnmatchedBraceException() {
             super("unmatched.brace");
@@ -5628,12 +5244,12 @@ public abstract class Expression {
      */
     public static class IdentifierException extends ParseException {
 
-        private static final long serialVersionUID = 1L;
+        private static final long serialVersionUID = -2050423148965843481L;
 
         private String identifier;
 
         /**
-         * Construct a <code>IdentifierException</code>.
+         * Construct an {@code IdentifierException}.
          *
          * @param identifier  the identifier that was not recognized
          */
@@ -5658,10 +5274,10 @@ public abstract class Expression {
      */
     public static class ReservedWordException extends ParseException {
 
-        private static final long serialVersionUID = 1L;
+        private static final long serialVersionUID = -1281977658799986894L;
 
         /**
-         * Construct a <code>ReservedWordException</code>.
+         * Construct a {@code ReservedWordException}.
          */
         public ReservedWordException() {
             super("reserved");
@@ -5670,15 +5286,14 @@ public abstract class Expression {
     }
 
     /**
-     * An exception class for the illegal use of the property
-     * ('object.property') syntax.
+     * An exception class for the illegal use of the property ({@code object.property}) syntax.
      */
     public static class PropertyException extends ParseException {
 
-        private static final long serialVersionUID = 1L;
+        private static final long serialVersionUID = -134506457895527215L;
 
         /**
-         * Construct a <code>PropertyException</code>.
+         * Construct a {@code PropertyException}.
          */
         public PropertyException() {
             super("property");
@@ -5691,10 +5306,10 @@ public abstract class Expression {
      */
     public static class NumberException extends ParseException {
 
-        private static final long serialVersionUID = 1L;
+        private static final long serialVersionUID = -3541897520713384932L;
 
         /**
-         * Construct a <code>NumberException</code>.
+         * Construct a {@code NumberException}.
          */
         public NumberException() {
             super("number");
@@ -5707,10 +5322,10 @@ public abstract class Expression {
      */
     public static class StringException extends ParseException {
 
-        private static final long serialVersionUID = 1L;
+        private static final long serialVersionUID = -663228289734382357L;
 
         /**
-         * Construct a <code>StringException</code>.
+         * Construct a {@code StringException}.
          */
         public StringException() {
             super("string");
@@ -5723,10 +5338,10 @@ public abstract class Expression {
      */
     public static class UnparsedStringException extends ParseException {
 
-        private static final long serialVersionUID = 1L;
+        private static final long serialVersionUID = 1312390447752373903L;
 
         /**
-         * Construct an <code>UnparsedStringException</code>.
+         * Construct an {@code UnparsedStringException}.
          */
         public UnparsedStringException() {
             super("unparsed");
@@ -5739,10 +5354,10 @@ public abstract class Expression {
      */
     public static class UnexpectedElementException extends ParseException {
 
-        private static final long serialVersionUID = 1L;
+        private static final long serialVersionUID = -3186327291206035634L;
 
         /**
-         * Construct an <code>UnexpectedElementException</code>.
+         * Construct an {@code UnexpectedElementException}.
          */
         public UnexpectedElementException() {
             super("unexpected");
@@ -5755,10 +5370,10 @@ public abstract class Expression {
      */
     public static class UnexpectedEndException extends ParseException {
 
-        private static final long serialVersionUID = 1L;
+        private static final long serialVersionUID = 515741523591116116L;
 
         /**
-         * Construct an <code>UnexpectedEndException</code>.
+         * Construct an {@code UnexpectedEndException}.
          */
         public UnexpectedEndException() {
             super("end");
@@ -5767,17 +5382,16 @@ public abstract class Expression {
     }
 
     /**
-     * An exception class for conditional expression errors.  These occur when
-     * a conditional expression does not have a matching else expression (the
-     * use of conditional expressions is an extension to the JSTL 1.0 EL
-     * specification).
+     * An exception class for conditional expression errors.  These occur when a conditional
+     * expression does not have a matching else expression (the use of conditional expressions
+     * is an extension to the JSTL 1.0 EL specification).
      */
     public static class ConditionalException extends ParseException {
 
-        private static final long serialVersionUID = 1L;
+        private static final long serialVersionUID = -2881382265664362226L;
 
         /**
-         * Construct a <code>ConditionalException</code>.
+         * Construct a {@code ConditionalException}.
          */
         public ConditionalException() {
             super("conditional");
@@ -5786,17 +5400,16 @@ public abstract class Expression {
     }
 
     /**
-     * An exception class for else expression errors.  These occur when
-     * an else expression appears without a matching conditional expression (the
-     * use of conditional expressions is an extension to the JSTL 1.0 EL
-     * specification).
+     * An exception class for else expression errors.  These occur when an else expression
+     * appears without a matching conditional expression (the use of conditional expressions is
+     * an extension to the JSTL 1.0 EL specification).
      */
     public static class ElseException extends ParseException {
 
-        private static final long serialVersionUID = 1L;
+        private static final long serialVersionUID = 6388695354388009372L;
 
         /**
-         * Construct an <code>ElseException</code>.
+         * Construct an {@code ElseException}.
          */
         public ElseException() {
             super("else");
@@ -5809,10 +5422,10 @@ public abstract class Expression {
      */
     public static class EvaluationException extends ExpressionException {
 
-        private static final long serialVersionUID = 1L;
+        private static final long serialVersionUID = 7286375754096923754L;
 
         /**
-         * Construct an <code>EvaluationException</code> with the given message.
+         * Construct an {@code EvaluationException} with the given message.
          *
          * @param message  the message
          */
@@ -5827,10 +5440,10 @@ public abstract class Expression {
      */
     public static class CoercionException extends EvaluationException {
 
-        private static final long serialVersionUID = 1L;
+        private static final long serialVersionUID = -1702285297144783306L;
 
         /**
-         * Construct a <code>CoercionException</code> for the given type.
+         * Construct a {@code CoercionException} for the given type.
          *
          * @param type  the type of the failed coercion
          */
@@ -5845,10 +5458,10 @@ public abstract class Expression {
      */
     public static class BooleanCoercionException extends CoercionException {
 
-        private static final long serialVersionUID = 1L;
+        private static final long serialVersionUID = 1441587294848534710L;
 
         /**
-         * Construct a <code>BooleanCoercionException</code>.
+         * Construct a {@code BooleanCoercionException}.
          */
         public BooleanCoercionException() {
             super("boolean");
@@ -5861,10 +5474,10 @@ public abstract class Expression {
      */
     public static class IntCoercionException extends CoercionException {
 
-        private static final long serialVersionUID = 1L;
+        private static final long serialVersionUID = -4442530503193693699L;
 
         /**
-         * Construct an <code>IntCoercionException</code>.
+         * Construct an {@code IntCoercionException}.
          */
         public IntCoercionException() {
             super("int");
@@ -5877,10 +5490,10 @@ public abstract class Expression {
      */
     public static class LongCoercionException extends CoercionException {
 
-        private static final long serialVersionUID = 1L;
+        private static final long serialVersionUID = -2943338656778121853L;
 
         /**
-         * Construct a <code>LongCoercionException</code>.
+         * Construct a {@code LongCoercionException}.
          */
         public LongCoercionException() {
             super("long");
@@ -5893,10 +5506,10 @@ public abstract class Expression {
      */
     public static class DoubleCoercionException extends CoercionException {
 
-        private static final long serialVersionUID = 1L;
+        private static final long serialVersionUID = 7189427432254746387L;
 
         /**
-         * Construct a <code>DoubleCoercionException</code>.
+         * Construct a {@code DoubleCoercionException}.
          */
         public DoubleCoercionException() {
             super("double");
@@ -5909,10 +5522,10 @@ public abstract class Expression {
      */
     public static class StringCoercionException extends CoercionException {
 
-        private static final long serialVersionUID = 1L;
+        private static final long serialVersionUID = 3794199809625613318L;
 
         /**
-         * Construct a <code>StringCoercionException</code>.
+         * Construct a {@code StringCoercionException}.
          */
         public StringCoercionException() {
             super("string");
@@ -5925,10 +5538,10 @@ public abstract class Expression {
      */
     public static class IndexException extends EvaluationException {
 
-        private static final long serialVersionUID = 1L;
+        private static final long serialVersionUID = -689989317127661110L;
 
         /**
-         * Construct an <code>IndexException</code>.
+         * Construct an {@code IndexException}.
          */
         public IndexException() {
             super("index");
@@ -5941,10 +5554,10 @@ public abstract class Expression {
      */
     public static class AssignException extends EvaluationException {
 
-        private static final long serialVersionUID = 1L;
+        private static final long serialVersionUID = 4258277443617101984L;
 
         /**
-         * Construct an <code>AssignException</code>.
+         * Construct an {@code AssignException}.
          */
         public AssignException() {
             super("assign");
@@ -5957,10 +5570,10 @@ public abstract class Expression {
      */
     public static class LengthException extends EvaluationException {
 
-        private static final long serialVersionUID = 1L;
+        private static final long serialVersionUID = -6836549488697678977L;
 
         /**
-         * Construct an <code>LengthException</code>.
+         * Construct a {@code LengthException}.
          */
         public LengthException() {
             super("length");
@@ -5973,10 +5586,10 @@ public abstract class Expression {
      */
     public static class SumException extends EvaluationException {
 
-        private static final long serialVersionUID = 1L;
+        private static final long serialVersionUID = 2385081765272547293L;
 
         /**
-         * Construct an <code>SumException</code>.
+         * Construct a {@code SumException}.
          */
         public SumException() {
             super("sum");
@@ -5991,15 +5604,134 @@ public abstract class Expression {
     public static interface Resolver {
 
         /**
-         * Resolve an identifier.  The result may be any type of
-         * <code>Expression</code>, but it will usually be a
-         * <code>Variable</code> or a <code>Constant</code>.
+         * Resolve an identifier.  The result may be any type of {@code Expression}, but it will
+         * usually be a {@code Variable} or a {@code Constant}.
          *
          * @param identifier  the identifier to be resolved
-         * @return            an expression, or null if the name can not be
-         *                    resolved
+         * @return            an expression, or {@code null} if the name can not be resolved
          */
         Expression resolve(String identifier);
+
+    }
+
+    /**
+     * Subclass of {@link ParseText} to handle Expression Language name rules, and number and
+     * string conventions.
+     */
+    public static class ELParseText extends ParseText {
+
+        public ELParseText(CharSequence s) {
+            super(s);
+        }
+
+        @Override
+        public boolean isNameStart(char ch) {
+            return isIdentifierStart(ch);
+        }
+
+        @Override
+        public boolean isNameContinuation(char ch) {
+            return isIdentifierPart(ch);
+        }
+
+        public boolean matchNumber() {
+            int i = getIndex();
+            int x = getTextLength();
+            if (i >= x)
+                return false;
+            char ch = charAt(i);
+            if (ch == '-' || ch == '+') {
+                if (++i >= x)
+                    return false;
+                ch = charAt(i);
+            }
+            if (!(isDigit(ch) || ch == '.'))
+                return false;
+        ok:
+            for (;;) {
+                while (isDigit(ch)) {
+                    if (++i >= x)
+                        break ok;
+                    ch = charAt(i);
+                }
+                if (ch == '.') {
+                    if (++i >= x)
+                        break ok;
+                    ch = charAt(i);
+                    while (isDigit(ch)) {
+                        if (++i >= x)
+                            break ok;
+                        ch = charAt(i);
+                    }
+                }
+                if (ch == 'E' || ch == 'e') {
+                    if (++i >= x)
+                        return false;
+                    ch = charAt(i);
+                    if (!isDigit(ch))
+                        return false;
+                    do {
+                        if (++i >= x)
+                            break ok;
+                    } while (isDigit(charAt(i)));
+                }
+                // check for name character immediately following?
+                break ok;
+            }
+            return matchSuccess(i);
+        }
+
+        public Number getResultNumber() {
+            String str = getResultString();
+            if (str.indexOf('.') >= 0 || str.indexOf('e') >= 0 || str.indexOf('E') >= 0)
+                return new Double(str);
+            long i = Long.parseLong(str);
+            if (i <= Integer.MAX_VALUE && i >= Integer.MIN_VALUE)
+                return new Integer((int)i);
+            return new Long(i);
+        }
+
+        public boolean matchStringLiteral() {
+            int i = getIndex();
+            int x = getTextLength();
+            if (i >= x)
+                return false;
+            char ch = charAt(i);
+            if (ch != '"' && ch != '\'')
+                return false;
+            char delimiter = ch;
+            for (;;) {
+                if (++i >= x)
+                    return false;
+                ch = charAt(i);
+                if (ch == delimiter)
+                    break;
+                if (ch == '\\') {
+                    if (++i >= x)
+                        return false;
+                    // check character following backslash?
+                }
+            }
+            return matchSuccess(i + 1);
+        }
+
+        public String getResultStringLiteral() {
+            int i = getStart();
+            int x = getIndex();
+            if (x - i < 2)
+                throw new IllegalStateException();
+            char ch = charAt(i++);
+            if (!(ch == '"' || ch == '\'') || ch != charAt(--x))
+                throw new IllegalStateException();
+            StringBuilder sb = new StringBuilder();
+            while (i < x) {
+                ch = charAt(i++);
+                if (ch == '\\')
+                    ch = charAt(i++);
+                sb.append(ch);
+            }
+            return sb.toString();
+        }
 
     }
 
