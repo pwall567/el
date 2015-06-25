@@ -96,7 +96,7 @@ public abstract class DummyMap implements Map<Object, Object> {
      * Unsupported operation.
      */
     @Override
-    public void putAll(Map<?, ?> t) {
+    public void putAll(Map<? extends Object, ? extends Object> t) {
         throw new UnsupportedOperationException();
     }
 
