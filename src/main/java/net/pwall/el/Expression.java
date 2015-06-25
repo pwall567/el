@@ -22,9 +22,11 @@
 package net.pwall.el;
 
 import java.lang.reflect.Array;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -901,14 +903,48 @@ public abstract class Expression {
                     throw new ReservedWordException();
                 }
                 else if (text.matchName()) {
-                    // lookup identifier using external name resolver
+                    // might be name, or might be function call
+                    int currentIndex = text.getIndex();
                     String identString = text.getResultString();
-                    Expression identifier = null;
-                    if (resolver != null)
-                        identifier = resolver.resolve(identString);
-                    if (identifier == null)
-                        throw new IdentifierException(identString);
-                    current.setRight(identifier);
+                    if (resolver instanceof ExtendedResolver && text.match(':') &&
+                            text.matchName()) {
+                        ExtendedResolver extResolver = (ExtendedResolver)resolver;
+                        String namespace = extResolver.resolvePrefix(identString);
+                        if (namespace == null)
+                            throw new FunctionCallException();
+                        String classname = extResolver.resolveNamespace(namespace);
+                        if (classname == null)
+                            throw new FunctionCallException();
+                        FunctionCall functionCall =
+                                new FunctionCall(classname, text.getResultString());
+                        text.skipSpaces();
+                        if (!text.match('('))
+                            throw new FunctionCallException();
+                        text.skipSpaces();
+                        if (!text.match(')')) {
+                            for (;;) {
+                                Expression nested = parseExpression(text, resolver);
+                                functionCall.addArgument(nested);
+                                if (text.isExhausted())
+                                    throw new FunctionCallException();
+                                if (text.match(')'))
+                                    break;
+                                if (!text.match(','))
+                                    throw new FunctionCallException();
+                            }
+                        }
+                        current.setRight(functionCall);
+                    }
+                    else {
+                        text.setIndex(currentIndex);
+                        // lookup identifier using external name resolver
+                        Expression identifier = null;
+                        if (resolver != null)
+                            identifier = resolver.resolve(identString);
+                        if (identifier == null)
+                            throw new IdentifierException(identString);
+                        current.setRight(identifier);
+                    }
                 }
                 else {
                     // none of the above - error
@@ -917,7 +953,10 @@ public abstract class Expression {
                 text.skipSpaces();
                 // now check for . and [] (possibly multiple)
                 Expression currentRight = current.getRight();
-                if (currentRight instanceof Parentheses || currentRight instanceof Variable) {
+                if (currentRight instanceof Parentheses || currentRight instanceof Variable ||
+                        currentRight instanceof FunctionCall) {
+                    // TODO is the above test necessary?
+                    // should indexing be allowed after any type of expression?
                     while (!text.isExhausted()) {
                         if (text.match('.')) {
                             // . property
@@ -5154,6 +5193,69 @@ public abstract class Expression {
 
     }
 
+    public static class FunctionCall extends Expression {
+
+        private static Map<String, Object> classMap = new HashMap<>();
+
+        private String classname;
+        private String functionName;
+        private List<Expression> arguments;
+
+        public FunctionCall(String classname, String functionName) {
+            this.classname = classname;
+            this.functionName = functionName;
+            arguments = new ArrayList<>();
+        }
+
+        public void addArgument(Expression argument) {
+            arguments.add(argument);
+        }
+
+        @Override
+        public Object evaluate() throws EvaluationException {
+            Object functionObject = classMap.get(classname);
+            if (functionObject == null) {
+                try {
+                    Class<?> functionObjectClass = Class.forName(classname);
+                    functionObject = functionObjectClass.newInstance();
+                    classMap.put(classname, functionObject);
+                }
+                catch (ClassNotFoundException e) {
+                    throw new EvaluationException("function");
+                }
+                catch (InstantiationException e) {
+                    throw new EvaluationException("function");
+                }
+                catch (IllegalAccessException e) {
+                    throw new EvaluationException("function");
+                }
+            }
+            for (Method method : functionObject.getClass().getMethods()) {
+                if (method.getName().equals(functionName) &&
+                        method.getParameterTypes().length == arguments.size()) {
+                    List<Object> args = new ArrayList<>();
+                    for (Expression arg : arguments) {
+                        args.add(arg.evaluate());
+                    }
+                    try {
+                        return method.invoke(functionObject, args.toArray());
+                    }
+                    catch (IllegalAccessException e) {
+                        throw new EvaluationException("function");
+                    }
+                    catch (IllegalArgumentException e) {
+                        throw new EvaluationException("function");
+                    }
+                    catch (InvocationTargetException e) {
+                        throw new EvaluationException("function");
+                    }
+                }
+            }
+            throw new EvaluationException("function");
+        }
+
+    }
+
     /**
      * A class to represent all exceptions in the expression system, both parsing and evaluation
      * exceptions.
@@ -5418,6 +5520,22 @@ public abstract class Expression {
     }
 
     /**
+     * An exception class for function call errors.
+     */
+    public static class FunctionCallException extends ParseException {
+
+        private static final long serialVersionUID = 5264850082664927757L;
+
+        /**
+         * Construct a {@code FunctionCallException}.
+         */
+        public FunctionCallException() {
+            super("function");
+        }
+
+    }
+
+    /**
      * A class to represent evaluation exceptions.
      */
     public static class EvaluationException extends ExpressionException {
@@ -5611,6 +5729,28 @@ public abstract class Expression {
          * @return            an expression, or {@code null} if the name can not be resolved
          */
         Expression resolve(String identifier);
+
+    }
+
+    public static interface ExtendedResolver extends Resolver {
+
+        /**
+         * Resolve a namespace prefix.  This is used in the case of prefixed function calls.
+         *
+         * @param   prefix  the prefix
+         * @return  the URI for the namespace, or {@code null} if the prefix can not be resolved
+         */
+        String resolvePrefix(String prefix);
+
+        /**
+         * Resolve a namespace URI to the classname of a class that implements the
+         * functionality.
+         *
+         * @param   uri     the URI
+         * @return  the classname of the implementing class, or {@code null} if the URI can not
+         *          be resolved
+         */
+        String resolveNamespace(String uri);
 
     }
 
