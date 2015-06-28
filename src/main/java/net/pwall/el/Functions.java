@@ -21,7 +21,6 @@
 
 package net.pwall.el;
 
-import java.lang.reflect.Array;
 import java.util.List;
 import java.util.Map;
 
@@ -30,7 +29,7 @@ import net.pwall.xml.XML;
 
 /**
  * Functions for JSTL Expression Language.
- * 
+ *
  * @author Peter Wall
  */
 public class Functions {
@@ -57,22 +56,56 @@ public class Functions {
         return str1.toUpperCase().indexOf(str2.toUpperCase()) >= 0;
     }
 
+    /**
+     * Tests if an input string ends with the specified suffix.
+     *
+     * @param   str1    the input string
+     * @param   str2    the suffix
+     * @return  {@code true} if the input string ends with the suffix
+     */
     public boolean endsWith(String str1, String str2) {
         return str1.endsWith(str2);
     }
 
+    /**
+     * Escapes characters that could be interpreted as XML markup.  For example, &lt; will be
+     * converted to &amp;lt;.
+     *
+     * @param   str     the string to escape
+     * @return  the escaped string
+     */
     public String escapeXML(String str) {
         return XML.escape(str);
     }
 
+    /**
+     * Returns the index within a string of the first occurrence of a specified substring.
+     *
+     * @param   str1    the input string
+     * @param   str2    the substring
+     * @return  the index, or -1 if the substring is not found
+     */
     public int indexOf(String str1, String str2) {
         return str1.indexOf(str2);
     }
 
+    /**
+     * Joins all elements of an array into a string.
+     *
+     * @param   strings         the array of strings
+     * @param   separator       the separator
+     * @return  a single string consisting of the array, joined by the separator
+     */
     public String join(String[] strings, String separator) {
         return Strings.join(strings, separator);
     }
 
+    /**
+     * Returns the number of items in a collection, or the number of characters in a string.
+     *
+     * @param   object  the input object
+     * @return  the number of items or characters
+     */
     public int length(Object object) {
         if (object instanceof CharSequence)
             return ((CharSequence)object).length();
@@ -82,52 +115,106 @@ public class Functions {
             return ((List<?>)object).size();
         if (object instanceof Object[])
             return ((Object[])object).length;
-        if (object.getClass().isArray())
-            return Array.getLength(object);
         return 0;
     }
 
-    public String replace(String str1, String str2, String str3) {
-        return str1.replace(str2, str3);
+    /**
+     * Returns a string resulting from replacing in an input string all occurrences of a
+     * "before" string into an "after" substring.
+     *
+     * @param   input   the input string
+     * @param   before  the string to be replaced
+     * @param   after   the replacement
+     * @return  the string after replacement
+     */
+    public String replace(String input, String before, String after) {
+        return input.replace(before, after);
     }
 
+    /**
+     * Splits a string into an array of substrings.
+     *
+     * @param   str1    the string to be split
+     * @param   str2    the separator
+     * @return
+     */
     public String[] split(String str1, String str2) {
-        if (str2.length() == 1)
-            return Strings.split(str1, str2.charAt(0));
-        // TODO
-        return null;
+        return Strings.split(str1, str2);
     }
 
+    /**
+     * Tests if an input string starts with the specified prefix.
+     *
+     * @param   str1    the input string
+     * @param   str2    the prefix
+     * @return  {@code true} if the input string starts with the prefix
+     */
     public boolean startsWith(String str1, String str2) {
         return str1.startsWith(str2);
     }
 
+    /**
+     * Returns a subset of a string.
+     *
+     * @param   str     the input string
+     * @param   start   the start index (inclusive)
+     * @param   end     the end index (exclusive)
+     * @return
+     */
     public String substring(String str, int start, int end) {
         return str.substring(start, end);
     }
 
+    /**
+     * Returns a subset of a string following a specific substring.
+     *
+     * @param   str1    the input string
+     * @param   str2    the separator
+     * @return  the substring
+     */
     public String substringAfter(String str1, String str2) {
         int i = str1.indexOf(str2);
-        if (i < 0)
-            return str1; // TODO check
-        return str1.substring(i + str2.length());
+        return i < 0 ? "" : str1.substring(i + str2.length());
     }
 
+    /**
+     * Returns a subset of a string before a specific substring.
+     *
+     * @param   str1    the input string
+     * @param   str2    the separator
+     * @return  the substring
+     */
     public String substringBefore(String str1, String str2) {
         int i = str1.indexOf(str2);
-        if (i < 0)
-            return str1; // TODO check
-        return str1.substring(0, i);
+        return i < 0 ? str1 : str1.substring(0, i);
     }
 
+    /**
+     * Converts all of the characters of a string to lower case.
+     *
+     * @param   str    the input string
+     * @return  the converted string
+     */
     public String toLowerCase(String str) {
         return str.toLowerCase();
     }
 
+    /**
+     * Converts all of the characters of a string to upper case.
+     *
+     * @param   str    the input string
+     * @return  the converted string
+     */
     public String toUpperCase(String str) {
         return str.toUpperCase();
     }
 
+    /**
+     * Removes white spaces from both ends of a string.
+     *
+     * @param   str    the input string
+     * @return  the trimmed string
+     */
     public String trim(String str) {
         return str.trim();
     }
