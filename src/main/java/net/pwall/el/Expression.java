@@ -876,8 +876,7 @@ public abstract class Expression {
                 else if (text.match('[')) {
                     // array
                     ArrayCreate arrayCreate = new ArrayCreate();
-                    text.skipSpaces();
-                    if (!text.match(']')) {
+                    if (!text.skipSpaces().match(']')) {
                         for (;;) {
                             Expression nested = parseExpression(text, resolver);
                             arrayCreate.addItem(nested);
@@ -890,6 +889,39 @@ public abstract class Expression {
                         }
                     }
                     current.setRight(arrayCreate);
+                }
+                else if (text.match('{')) {
+                    // object
+                    ObjectCreate objectCreate = new ObjectCreate();
+                    if (!text.skipSpaces().match('}')) {
+                        for (;;) {
+                            if (text.isExhausted())
+                                throw new UnexpectedEndException();
+                            String identifier = null;
+                            if (text.matchName())
+                                identifier = text.getResultString();
+                            else if (text.matchStringLiteral())
+                                identifier = text.getResultStringLiteral();
+                            else
+                                throw new UnexpectedElementException();
+                            if (text.skipSpaces().isExhausted())
+                                throw new UnexpectedEndException();
+                            if (!text.match(':'))
+                                throw new UnexpectedElementException();
+                            if (text.skipSpaces().isExhausted())
+                                throw new UnexpectedEndException();
+                            Expression nested = parseExpression(text, resolver);
+                            objectCreate.addItem(identifier, nested);
+                            if (text.skipSpaces().isExhausted())
+                                throw new UnexpectedEndException();
+                            if (text.match('}'))
+                                break;
+                            if (!text.match(','))
+                                throw new UnexpectedElementException();
+                            text.skipSpaces();
+                        }
+                    }
+                    current.setRight(objectCreate);
                 }
                 else if (text.matchNumber()) {
                     // numeric literal
@@ -971,35 +1003,30 @@ public abstract class Expression {
                 text.skipSpaces();
                 // now check for . and [] (possibly multiple)
                 Expression currentRight = current.getRight();
-                if (currentRight instanceof Parentheses || currentRight instanceof Variable ||
-                        currentRight instanceof FunctionCall) {
-                    // TODO is the above test necessary?
-                    // should indexing be allowed after any type of expression?
-                    while (!text.isExhausted()) {
-                        if (text.match('.')) {
-                            // . property
-                            text.skipSpaces();
-                            if (!text.matchName())
-                                throw new PropertyException();
-                            Indexed indexed = new Indexed(currentRight,
-                                    new Constant(text.getResultString()));
-                            current.setRight(indexed);
-                            currentRight = indexed;
-                            text.skipSpaces();
-                        }
-                        else if (text.match('[')) {
-                            // [ index ]
-                            Expression nested = parseExpression(text, resolver);
-                            if (!text.match(']'))
-                                throw new UnmatchedBracketException();
-                            Indexed indexed = new Indexed(currentRight, nested);
-                            current.setRight(indexed);
-                            currentRight = indexed;
-                            text.skipSpaces();
-                        }
-                        else
-                            break;
+                while (!text.isExhausted()) {
+                    if (text.match('.')) {
+                        // . property
+                        text.skipSpaces();
+                        if (!text.matchName())
+                            throw new PropertyException();
+                        Indexed indexed = new Indexed(currentRight,
+                                new Constant(text.getResultString()));
+                        current.setRight(indexed);
+                        currentRight = indexed;
+                        text.skipSpaces();
                     }
+                    else if (text.match('[')) {
+                        // [ index ]
+                        Expression nested = parseExpression(text, resolver);
+                        if (!text.match(']'))
+                            throw new UnmatchedBracketException();
+                        Indexed indexed = new Indexed(currentRight, nested);
+                        current.setRight(indexed);
+                        currentRight = indexed;
+                        text.skipSpaces();
+                    }
+                    else
+                        break;
                 }
                 if (text.isExhausted())
                     break;
@@ -5358,6 +5385,17 @@ public abstract class Expression {
         }
 
         /**
+         * Get the result type of this operator.  The result type of an array create operation
+         * is always {@code Object[]}.
+         *
+         * @return  the result type of the operator
+         */
+        @Override
+        public Class<?> getType() {
+            return Object[].class;
+        }
+
+        /**
          * Test for equality.  Return {@code true} only if the other object is an
          * {@code ArrayCreate} operation with equal operands.
          *
@@ -5391,6 +5429,140 @@ public abstract class Expression {
             for (int i = 0, n = items.size(); i < n; ++i)
                 result ^= items.get(i).hashCode();
             return result;
+        }
+
+    }
+
+    /**
+     * A class to represent the object create operation.
+     */
+    public static class ObjectCreate extends Expression {
+
+        private List<ObjectCreateItem> items;
+
+        public ObjectCreate() {
+            items = new ArrayList<>();
+        }
+
+        public void addItem(String identifier, Expression expression) {
+            items.add(new ObjectCreateItem(identifier, expression));
+        }
+
+        @Override
+        public Object evaluate() throws EvaluationException {
+            int n = items.size();
+            Map<String, Object> object = new HashMap<>();
+            for (int i = 0; i < n; i++)
+                object.put(items.get(i).getIdentifier(),
+                        items.get(i).getExpression().evaluate());
+            return object;
+        }
+
+        @Override
+        public Expression optimize() {
+            for (int i = 0, n = items.size(); i < n; i++) {
+                ObjectCreateItem item = items.get(i);
+                item.setExpression(item.getExpression().optimize());
+            }
+            return this;
+        }
+
+        /**
+         * Get the result type of this operator.  The result type of an object create operation
+         * is always {@link Map}.
+         *
+         * @return  the result type of the operator
+         */
+        @Override
+        public Class<?> getType() {
+            return Map.class;
+        }
+
+        /**
+         * Test for equality.  Return {@code true} only if the other object is an
+         * {@code ObjectCreate} operation with equal operands.
+         *
+         * @param   o   the object for comparison
+         * @return      {@code true} if expressions are equal
+         * @see     Object#equals(Object)
+         */
+        @Override
+        public boolean equals(Object o) {
+            if (!(o instanceof ObjectCreate))
+                return false;
+            ObjectCreate oc = (ObjectCreate)o;
+            int n = items.size();
+            if (n != oc.items.size())
+                return false;
+            for (int i = 0; i < n; i++)
+                if (!items.get(i).equals(oc))
+                    return false;
+            return true;
+        }
+
+        /**
+         * Ensure that objects which compare as equal return the same hash code.
+         *
+         * @return  the hash code
+         * @see     Object#hashCode()
+         */
+        @Override
+        public int hashCode() {
+            int result = 0;
+            for (int i = 0, n = items.size(); i < n; ++i)
+                result ^= items.get(i).hashCode();
+            return result;
+        }
+
+    }
+
+    public static class ObjectCreateItem {
+
+        private String identifier;
+        private Expression expression;
+
+        public ObjectCreateItem(String identifier, Expression expression) {
+            this.identifier = identifier;
+            this.expression = expression;
+        }
+
+        public String getIdentifier() {
+            return identifier;
+        }
+
+        public Expression getExpression() {
+            return expression;
+        }
+
+        public void setExpression(Expression expression) {
+            this.expression = expression;
+        }
+
+        /**
+         * Test for equality.  Return {@code true} only if the other object is an
+         * {@code ObjectCreateItem} operation with equal contents.
+         *
+         * @param   o   the object for comparison
+         * @return      {@code true} if expressions are equal
+         * @see     Object#equals(Object)
+         */
+        @Override
+        public boolean equals(Object o) {
+            if (!(o instanceof ObjectCreateItem))
+                return false;
+            ObjectCreateItem oci = (ObjectCreateItem)o;
+            return identifier.equals(oci.identifier) && expression.equals(oci.expression);
+        }
+
+        /**
+         * Ensure that objects which compare as equal return the same hash code.
+         *
+         * @return  the hash code
+         * @see     Object#hashCode()
+         */
+        @Override
+        public int hashCode() {
+            return identifier.hashCode() ^ expression.hashCode();
         }
 
     }
