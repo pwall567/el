@@ -873,6 +873,24 @@ public abstract class Expression {
                         nested = new Parentheses(nested);
                     current.setRight(nested);
                 }
+                else if (text.match('[')) {
+                    // array
+                    ArrayCreate arrayCreate = new ArrayCreate();
+                    text.skipSpaces();
+                    if (!text.match(']')) {
+                        for (;;) {
+                            Expression nested = parseExpression(text, resolver);
+                            arrayCreate.addItem(nested);
+                            if (text.skipSpaces().isExhausted())
+                                throw new UnexpectedEndException();
+                            if (text.match(']'))
+                                break;
+                            if (!text.match(','))
+                                throw new UnexpectedElementException();
+                        }
+                    }
+                    current.setRight(arrayCreate);
+                }
                 else if (text.matchNumber()) {
                     // numeric literal
                     current.setRight(new Constant(text.getResultNumber()));
@@ -925,7 +943,7 @@ public abstract class Expression {
                             for (;;) {
                                 Expression nested = parseExpression(text, resolver);
                                 functionCall.addArgument(nested);
-                                if (text.isExhausted())
+                                if (text.skipSpaces().isExhausted())
                                     throw new FunctionParseException();
                                 if (text.match(')'))
                                     break;
@@ -5310,6 +5328,68 @@ public abstract class Expression {
             int result = classname.hashCode() ^ functionName.hashCode();
             for (int i = 0, n = arguments.size(); i < n; ++i)
                 result ^= arguments.get(i).hashCode();
+            return result;
+        }
+
+    }
+
+    /**
+     * A class to represent the array create operation.
+     */
+    public static class ArrayCreate extends Expression {
+
+        private List<Expression> items;
+
+        public ArrayCreate() {
+            items = new ArrayList<>();
+        }
+
+        public void addItem(Expression item) {
+            items.add(item);
+        }
+
+        @Override
+        public Object evaluate() throws EvaluationException {
+            int n = items.size();
+            Object[] array = new Object[n];
+            for (int i = 0; i < n; i++)
+                array[i] = items.get(i).evaluate();
+            return array;
+        }
+
+        /**
+         * Test for equality.  Return {@code true} only if the other object is an
+         * {@code ArrayCreate} operation with equal operands.
+         *
+         * @param   o   the object for comparison
+         * @return      {@code true} if expressions are equal
+         * @see     Object#equals(Object)
+         */
+        @Override
+        public boolean equals(Object o) {
+            if (!(o instanceof ArrayCreate))
+                return false;
+            ArrayCreate ac = (ArrayCreate)o;
+            int n = items.size();
+            if (n != ac.items.size())
+                return false;
+            for (int i = 0; i < n; i++)
+                if (!items.get(i).equals(ac))
+                    return false;
+            return true;
+        }
+
+        /**
+         * Ensure that objects which compare as equal return the same hash code.
+         *
+         * @return  the hash code
+         * @see     Object#hashCode()
+         */
+        @Override
+        public int hashCode() {
+            int result = 0;
+            for (int i = 0, n = items.size(); i < n; ++i)
+                result ^= items.get(i).hashCode();
             return result;
         }
 
