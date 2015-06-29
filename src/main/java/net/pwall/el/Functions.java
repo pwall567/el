@@ -41,7 +41,7 @@ public class Functions {
      * @param   str2    the string to test for
      * @return  {@code true} if the second string is contained in the first
      */
-    public boolean contains(String str1, String str2) {
+    public static boolean contains(String str1, String str2) {
         return str1.indexOf(str2) >= 0;
     }
 
@@ -52,7 +52,7 @@ public class Functions {
      * @param   str2    the string to test for
      * @return  {@code true} if the second string is contained in the first
      */
-    public boolean containsIgnoreCase(String str1, String str2) {
+    public static boolean containsIgnoreCase(String str1, String str2) {
         return str1.toUpperCase().indexOf(str2.toUpperCase()) >= 0;
     }
 
@@ -63,7 +63,7 @@ public class Functions {
      * @param   str2    the suffix
      * @return  {@code true} if the input string ends with the suffix
      */
-    public boolean endsWith(String str1, String str2) {
+    public static boolean endsWith(String str1, String str2) {
         return str1.endsWith(str2);
     }
 
@@ -74,7 +74,7 @@ public class Functions {
      * @param   str     the string to escape
      * @return  the escaped string
      */
-    public String escapeXML(String str) {
+    public static String escapeXML(String str) {
         return XML.escape(str);
     }
 
@@ -85,7 +85,7 @@ public class Functions {
      * @param   str2    the substring
      * @return  the index, or -1 if the substring is not found
      */
-    public int indexOf(String str1, String str2) {
+    public static int indexOf(String str1, String str2) {
         return str1.indexOf(str2);
     }
 
@@ -96,7 +96,7 @@ public class Functions {
      * @param   separator       the separator
      * @return  a single string consisting of the array, joined by the separator
      */
-    public String join(String[] strings, String separator) {
+    public static String join(String[] strings, String separator) {
         return Strings.join(strings, separator);
     }
 
@@ -106,7 +106,7 @@ public class Functions {
      * @param   object  the input object
      * @return  the number of items or characters
      */
-    public int length(Object object) {
+    public static int length(Object object) {
         if (object instanceof CharSequence)
             return ((CharSequence)object).length();
         if (object instanceof Map)
@@ -127,7 +127,7 @@ public class Functions {
      * @param   after   the replacement
      * @return  the string after replacement
      */
-    public String replace(String input, String before, String after) {
+    public static String replace(String input, String before, String after) {
         return input.replace(before, after);
     }
 
@@ -138,7 +138,7 @@ public class Functions {
      * @param   str2    the separator
      * @return
      */
-    public String[] split(String str1, String str2) {
+    public static String[] split(String str1, String str2) {
         return Strings.split(str1, str2);
     }
 
@@ -149,7 +149,7 @@ public class Functions {
      * @param   str2    the prefix
      * @return  {@code true} if the input string starts with the prefix
      */
-    public boolean startsWith(String str1, String str2) {
+    public static boolean startsWith(String str1, String str2) {
         return str1.startsWith(str2);
     }
 
@@ -161,7 +161,7 @@ public class Functions {
      * @param   end     the end index (exclusive)
      * @return
      */
-    public String substring(String str, int start, int end) {
+    public static String substring(String str, int start, int end) {
         return str.substring(start, end);
     }
 
@@ -172,7 +172,7 @@ public class Functions {
      * @param   str2    the separator
      * @return  the substring
      */
-    public String substringAfter(String str1, String str2) {
+    public static String substringAfter(String str1, String str2) {
         int i = str1.indexOf(str2);
         return i < 0 ? "" : str1.substring(i + str2.length());
     }
@@ -184,7 +184,7 @@ public class Functions {
      * @param   str2    the separator
      * @return  the substring
      */
-    public String substringBefore(String str1, String str2) {
+    public static String substringBefore(String str1, String str2) {
         int i = str1.indexOf(str2);
         return i < 0 ? str1 : str1.substring(0, i);
     }
@@ -195,7 +195,7 @@ public class Functions {
      * @param   str    the input string
      * @return  the converted string
      */
-    public String toLowerCase(String str) {
+    public static String toLowerCase(String str) {
         return str.toLowerCase();
     }
 
@@ -205,7 +205,7 @@ public class Functions {
      * @param   str    the input string
      * @return  the converted string
      */
-    public String toUpperCase(String str) {
+    public static String toUpperCase(String str) {
         return str.toUpperCase();
     }
 
@@ -215,7 +215,7 @@ public class Functions {
      * @param   str    the input string
      * @return  the trimmed string
      */
-    public String trim(String str) {
+    public static String trim(String str) {
         return str.trim();
     }
 

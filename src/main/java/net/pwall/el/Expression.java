@@ -911,26 +911,26 @@ public abstract class Expression {
                         ExtendedResolver extResolver = (ExtendedResolver)resolver;
                         String namespace = extResolver.resolvePrefix(identString);
                         if (namespace == null)
-                            throw new FunctionCallException();
+                            throw new FunctionParseException();
                         String classname = extResolver.resolveNamespace(namespace);
                         if (classname == null)
-                            throw new FunctionCallException();
+                            throw new FunctionParseException();
                         FunctionCall functionCall =
                                 new FunctionCall(classname, text.getResultString());
                         text.skipSpaces();
                         if (!text.match('('))
-                            throw new FunctionCallException();
+                            throw new FunctionParseException();
                         text.skipSpaces();
                         if (!text.match(')')) {
                             for (;;) {
                                 Expression nested = parseExpression(text, resolver);
                                 functionCall.addArgument(nested);
                                 if (text.isExhausted())
-                                    throw new FunctionCallException();
+                                    throw new FunctionParseException();
                                 if (text.match(')'))
                                     break;
                                 if (!text.match(','))
-                                    throw new FunctionCallException();
+                                    throw new FunctionParseException();
                             }
                         }
                         current.setRight(functionCall);
@@ -5193,6 +5193,9 @@ public abstract class Expression {
 
     }
 
+    /**
+     * A class to represent the function call operation.
+     */
     public static class FunctionCall extends Expression {
 
         private static Map<String, Object> classMap = new HashMap<>();
@@ -5201,12 +5204,23 @@ public abstract class Expression {
         private String functionName;
         private List<Expression> arguments;
 
+        /**
+         * Create a function call operation.
+         *
+         * @param   classname       the classname of the class to instantiate
+         * @param   functionName    the name of the method to execute
+         */
         public FunctionCall(String classname, String functionName) {
             this.classname = classname;
             this.functionName = functionName;
             arguments = new ArrayList<>();
         }
 
+        /**
+         * Add an argument to the function call.
+         *
+         * @param   argument    the argument
+         */
         public void addArgument(Expression argument) {
             arguments.add(argument);
         }
@@ -5220,38 +5234,83 @@ public abstract class Expression {
                     functionObject = functionObjectClass.newInstance();
                     classMap.put(classname, functionObject);
                 }
-                catch (ClassNotFoundException e) {
-                    throw new EvaluationException("function");
+                catch (ClassNotFoundException e) { // handle these differently?
+                    throw new FunctionEvaluationException();
                 }
                 catch (InstantiationException e) {
-                    throw new EvaluationException("function");
+                    throw new FunctionEvaluationException();
                 }
                 catch (IllegalAccessException e) {
-                    throw new EvaluationException("function");
+                    throw new FunctionEvaluationException();
                 }
             }
+            int n = arguments.size();
             for (Method method : functionObject.getClass().getMethods()) {
                 if (method.getName().equals(functionName) &&
-                        method.getParameterTypes().length == arguments.size()) {
-                    List<Object> args = new ArrayList<>();
-                    for (Expression arg : arguments) {
-                        args.add(arg.evaluate());
-                    }
+                        method.getParameterTypes().length == n) {
+                    Object[] array = new Object[n];
+                    for (int i = 0; i < n; i++)
+                        array[i] = arguments.get(i).evaluate();
                     try {
-                        return method.invoke(functionObject, args.toArray());
+                        return method.invoke(null, array);
                     }
                     catch (IllegalAccessException e) {
-                        throw new EvaluationException("function");
+                        throw new FunctionEvaluationException();
                     }
                     catch (IllegalArgumentException e) {
-                        throw new EvaluationException("function");
+                        throw new FunctionEvaluationException();
                     }
                     catch (InvocationTargetException e) {
-                        throw new EvaluationException("function");
+                        throw new FunctionEvaluationException();
                     }
                 }
             }
-            throw new EvaluationException("function");
+            throw new FunctionEvaluationException(); // no matching method found
+        }
+
+        @Override
+        public Expression optimize() {
+            for (int i = 0, n = arguments.size(); i < n; i++)
+                arguments.set(i, arguments.get(i).optimize());
+            return this;
+        }
+
+        /**
+         * Test for equality.  Return {@code true} only if the other object is a
+         * {@code FunctionCall} operation with equal operands.
+         *
+         * @param   o   the object for comparison
+         * @return      {@code true} if expressions are equal
+         * @see     Object#equals(Object)
+         */
+        @Override
+        public boolean equals(Object o) {
+            if (!(o instanceof FunctionCall))
+                return false;
+            FunctionCall fc = (FunctionCall)o;
+            if (!classname.equals(fc.classname) || !functionName.equals(fc.functionName))
+                return false;
+            int n = arguments.size();
+            if (n != fc.arguments.size())
+                return false;
+            for (int i = 0; i < n; i++)
+                if (!arguments.get(i).equals(fc.arguments.get(i)))
+                    return false;
+            return true;
+        }
+
+        /**
+         * Ensure that objects which compare as equal return the same hash code.
+         *
+         * @return  the hash code
+         * @see     Object#hashCode()
+         */
+        @Override
+        public int hashCode() {
+            int result = classname.hashCode() ^ functionName.hashCode();
+            for (int i = 0, n = arguments.size(); i < n; ++i)
+                result ^= arguments.get(i).hashCode();
+            return result;
         }
 
     }
@@ -5356,7 +5415,7 @@ public abstract class Expression {
          * @param identifier  the identifier that was not recognized
          */
         public IdentifierException(String identifier) {
-            super("identifier");
+            super("identifier:" + identifier);
             this.identifier = identifier;
         }
 
@@ -5522,15 +5581,15 @@ public abstract class Expression {
     /**
      * An exception class for function call errors.
      */
-    public static class FunctionCallException extends ParseException {
+    public static class FunctionParseException extends ParseException {
 
-        private static final long serialVersionUID = 5264850082664927757L;
+        private static final long serialVersionUID = 3048458551293937043L;
 
         /**
-         * Construct a {@code FunctionCallException}.
+         * Construct a {@code FunctionParseException}.
          */
-        public FunctionCallException() {
-            super("function");
+        public FunctionParseException() {
+            super("parse.function");
         }
 
     }
@@ -5711,6 +5770,22 @@ public abstract class Expression {
          */
         public SumException() {
             super("sum");
+        }
+
+    }
+
+    /**
+     * An exception class for sum operation errors.
+     */
+    public static class FunctionEvaluationException extends EvaluationException {
+
+        private static final long serialVersionUID = 3505224066470817874L;
+
+        /**
+         * Construct a {@code FunctionEvaluationException}.
+         */
+        public FunctionEvaluationException() {
+            super("evaluate.function");
         }
 
     }
