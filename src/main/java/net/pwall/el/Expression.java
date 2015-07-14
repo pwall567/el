@@ -962,11 +962,11 @@ public abstract class Expression {
                         String namespace = extResolver.resolvePrefix(identString);
                         if (namespace == null)
                             throw new FunctionParseException();
-                        String classname = extResolver.resolveNamespace(namespace);
-                        if (classname == null)
+                        Object functionImpl = extResolver.resolveNamespace(namespace);
+                        if (functionImpl == null)
                             throw new FunctionParseException();
                         FunctionCall functionCall =
-                                new FunctionCall(classname, text.getResultString());
+                                new FunctionCall(functionImpl, text.getResultString());
                         text.skipSpaces();
                         if (!text.match('('))
                             throw new FunctionParseException();
@@ -5243,9 +5243,7 @@ public abstract class Expression {
      */
     public static class FunctionCall extends Expression {
 
-        private static Map<String, Object> classMap = new HashMap<>();
-
-        private String classname;
+        private Object impl;
         private String functionName;
         private List<Expression> arguments;
 
@@ -5255,8 +5253,8 @@ public abstract class Expression {
          * @param   classname       the classname of the class to instantiate
          * @param   functionName    the name of the method to execute
          */
-        public FunctionCall(String classname, String functionName) {
-            this.classname = classname;
+        public FunctionCall(Object impl, String functionName) {
+            this.impl = impl;
             this.functionName = functionName;
             arguments = new ArrayList<>();
         }
@@ -5272,32 +5270,15 @@ public abstract class Expression {
 
         @Override
         public Object evaluate() throws EvaluationException {
-            Object functionObject = classMap.get(classname);
-            if (functionObject == null) {
-                try {
-                    Class<?> functionObjectClass = Class.forName(classname);
-                    functionObject = functionObjectClass.newInstance();
-                    classMap.put(classname, functionObject);
-                }
-                catch (ClassNotFoundException e) { // handle these differently?
-                    throw new FunctionEvaluationException();
-                }
-                catch (InstantiationException e) {
-                    throw new FunctionEvaluationException();
-                }
-                catch (IllegalAccessException e) {
-                    throw new FunctionEvaluationException();
-                }
-            }
             int n = arguments.size();
-            for (Method method : functionObject.getClass().getMethods()) {
+            for (Method method : impl.getClass().getMethods()) {
                 if (method.getName().equals(functionName) &&
                         method.getParameterTypes().length == n) {
                     Object[] array = new Object[n];
                     for (int i = 0; i < n; i++)
                         array[i] = arguments.get(i).evaluate();
                     try {
-                        return method.invoke(null, array);
+                        return method.invoke(impl, array);
                     }
                     catch (IllegalAccessException e) {
                         throw new FunctionEvaluationException();
@@ -5333,7 +5314,7 @@ public abstract class Expression {
             if (!(o instanceof FunctionCall))
                 return false;
             FunctionCall fc = (FunctionCall)o;
-            if (!classname.equals(fc.classname) || !functionName.equals(fc.functionName))
+            if (!impl.equals(fc.impl) || !functionName.equals(fc.functionName))
                 return false;
             int n = arguments.size();
             if (n != fc.arguments.size())
@@ -5352,7 +5333,7 @@ public abstract class Expression {
          */
         @Override
         public int hashCode() {
-            int result = classname.hashCode() ^ functionName.hashCode();
+            int result = impl.hashCode() ^ functionName.hashCode();
             for (int i = 0, n = arguments.size(); i < n; ++i)
                 result ^= arguments.get(i).hashCode();
             return result;
@@ -6070,14 +6051,12 @@ public abstract class Expression {
         String resolvePrefix(String prefix);
 
         /**
-         * Resolve a namespace URI to the classname of a class that implements the
-         * functionality.
+         * Resolve a namespace URI to an object that implements the functionality.
          *
          * @param   uri     the URI
-         * @return  the classname of the implementing class, or {@code null} if the URI can not
-         *          be resolved
+         * @return  the implementing object, or {@code null} if the URI can not be resolved
          */
-        String resolveNamespace(String uri);
+        Object resolveNamespace(String uri);
 
     }
 
