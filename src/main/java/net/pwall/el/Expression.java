@@ -67,7 +67,6 @@ import net.pwall.util.ParseText;
  *     <li>String concatenation (join) operation</li>
  *     <li>Array/list <code>length</code> and <code>sum</code> operations</li>
  *   </ul>
- * </p>
  *
  * <p>There are many ways to use the system.  The simplest is to use the static
  * methods of this class:
@@ -91,7 +90,7 @@ import net.pwall.util.ParseText;
  * </pre>
  * This is only a brief introduction to the facilities of the system; see the
  * documentation for the methods of this class and its children for more
- * information.</p>
+ * information.
  *
  * @author Peter Wall
  */
