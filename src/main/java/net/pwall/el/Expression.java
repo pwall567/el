@@ -1691,7 +1691,7 @@ public abstract class Expression {
                 return true;
             if (!isAssociative())
                 return false;
-            List<Expression> operands = new ArrayList<>();
+            List<Expression> operands = new ArrayList<Expression>();
             accumOperands(operands, getLeft());
             accumOperands(operands, getRight());
             if (!checkOperands(operands, op.getLeft()))
@@ -5251,7 +5251,7 @@ public abstract class Expression {
         public FunctionCall(Object impl, String functionName) {
             this.impl = impl;
             this.functionName = functionName;
-            arguments = new ArrayList<>();
+            arguments = new ArrayList<Expression>();
         }
 
         /**
@@ -5344,7 +5344,7 @@ public abstract class Expression {
         private List<Expression> items;
 
         public ArrayCreate() {
-            items = new ArrayList<>();
+            items = new ArrayList<Expression>();
         }
 
         public void addItem(Expression item) {
@@ -5417,7 +5417,7 @@ public abstract class Expression {
         private List<ObjectCreateItem> items;
 
         public ObjectCreate() {
-            items = new ArrayList<>();
+            items = new ArrayList<ObjectCreateItem>();
         }
 
         public void addItem(String identifier, Expression expression) {
@@ -5427,7 +5427,7 @@ public abstract class Expression {
         @Override
         public Object evaluate() throws EvaluationException {
             int n = items.size();
-            Map<String, Object> object = new HashMap<>();
+            Map<String, Object> object = new HashMap<String, Object>();
             for (int i = 0; i < n; i++)
                 object.put(items.get(i).getIdentifier(),
                         items.get(i).getExpression().evaluate());

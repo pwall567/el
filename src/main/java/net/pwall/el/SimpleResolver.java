@@ -42,7 +42,7 @@ public class SimpleResolver implements Expression.Resolver {
      * Construct the <code>SimpleResolver</code>
      */
     public SimpleResolver() {
-        map = new HashMap<>();
+        map = new HashMap<String, Object>();
     }
 
     /**
