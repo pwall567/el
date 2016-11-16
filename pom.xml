@@ -6,7 +6,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>net.pwall.el</groupId>
   <artifactId>el</artifactId>
-  <version>3.0</version>
+  <version>3.0.1</version>
   <name>Expression Language</name>
   <description>Updated version of EL</description>
   <packaging>jar</packaging>
@@ -40,7 +40,7 @@
   </developers>
 
   <properties>
-    <java.version>1.7</java.version>
+    <java.version>1.6</java.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
 
@@ -48,12 +48,12 @@
     <dependency>
       <groupId>net.pwall.util</groupId>
       <artifactId>javautil</artifactId>
-      <version>1.0</version>
+      <version>1.0.4</version>
     </dependency>
     <dependency>
       <groupId>net.pwall.xml</groupId>
       <artifactId>xmlutil</artifactId>
-      <version>1.0</version>
+      <version>1.0.1</version>
     </dependency>
   </dependencies>
 
