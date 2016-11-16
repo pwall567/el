@@ -136,7 +136,7 @@ public class Functions {
      *
      * @param   str1    the string to be split
      * @param   str2    the separator
-     * @return
+     * @return  the array
      */
     public static String[] split(String str1, String str2) {
         return Strings.split(str1, str2);
@@ -159,7 +159,7 @@ public class Functions {
      * @param   str     the input string
      * @param   start   the start index (inclusive)
      * @param   end     the end index (exclusive)
-     * @return
+     * @return  the substring
      */
     public static String substring(String str, int start, int end) {
         return str.substring(start, end);

@@ -81,17 +81,12 @@ import net.pwall.util.ParseText;
  *     String result = Expression.substitute("4+3*2=${4+3*2}", null);
  *     // result will contain "4+3*2=10"
  * </pre>
- * To allow the use of JSP variables, a {@link JspResolver} may be used:
- * <pre>
- *     JspResolver resolver = new JspResolver(pageContext);
- *     String output = Expression.substitute(input, resolver);
- * </pre>
  * More complex uses of the system, for example conditional expressions, may
  * require a {@link Parser} to be instantiated:
  * <pre>
  *     Expression.Parser parser = new Expression.Parser();
  *     parser.setConditionalAllowed(true);
- *     Expression exp = Expression.parseExpression("4 > 3 ? 'a' : 'b'", null);
+ *     Expression exp = Expression.parseExpression("4 &gt; 3 ? 'a' : 'b'", null);
  *     Object result = exp.evaluate(); // result will contain 'a'
  * </pre>
  * This is only a brief introduction to the facilities of the system; see the
@@ -800,7 +795,7 @@ public abstract class Expression {
          * {@link ELParseText} will be updated past the text translated, and the caller must
          * confirm that this is the end of the expression.
          *
-         * @param test      an {@link ELParseText} object containing the text to parse
+         * @param text      an {@link ELParseText} object containing the text to parse
          *                  (not including ${ })
          * @param resolver  a {@link Resolver} object to resolve names in
          *                  the expression
@@ -1226,7 +1221,7 @@ public abstract class Expression {
          * identical to {@link #parseExpression(ELParseText, Resolver)} above except that it
          * uses a {@link Resolver} set by the {@link #setResolver(Resolver)} method.
          *
-         * @param test      an {@link ELParseText} object containing the text to parse
+         * @param text      an {@link ELParseText} object containing the text to parse
          *                  (not including ${ })
          * @return          the {@code Expression} tree
          * @throws ParseException on any errors
@@ -5250,7 +5245,7 @@ public abstract class Expression {
         /**
          * Create a function call operation.
          *
-         * @param   classname       the classname of the class to instantiate
+         * @param   impl            the implementation object
          * @param   functionName    the name of the method to execute
          */
         public FunctionCall(Object impl, String functionName) {
