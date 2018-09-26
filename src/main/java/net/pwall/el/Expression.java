@@ -5471,7 +5471,7 @@ public abstract class Expression {
             if (n != oc.items.size())
                 return false;
             for (int i = 0; i < n; i++)
-                if (!items.get(i).equals(oc))
+                if (!items.get(i).equals(oc.items.get(i)))
                     return false;
             return true;
         }
