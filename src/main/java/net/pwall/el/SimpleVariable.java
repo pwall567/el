@@ -1,8 +1,8 @@
 /*
  * @(#) SimpleVariable.java
  *
- * JSTL Expression Language Parser / Evaluator - Simple Name Resolver
- * Copyright (C) 2003, 2006, 2014  Peter Wall
+ * JSTL Expression Language Parser / Evaluator
+ * Copyright (C) 2003, 2005, 2006, 2014, 2020  Peter Wall
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -26,22 +26,23 @@
 package net.pwall.el;
 
 /**
- * A simple implementation of the <code>{@link Expression.Variable}</code>
+ * A simple implementation of the <code>{@link Variable}</code>
  * abstract class.  This class is never used by the expression parser; it is
  * provided as a convenience for writers of
- * <code>{@link Expression.Resolver}</code> classes.
+ * <code>{@link Resolver}</code> classes.
  *
- * @author Peter Wall
+ * @author  Peter Wall
  */
-public class SimpleVariable extends Expression.Variable {
+public class SimpleVariable extends Variable {
 
-    private String name;
+    private final String name;
     private Object object;
 
     /**
      * Construct a <code>SimpleVariable</code> which returns an object.
      *
-     * @param object  the object to be returned
+     * @param name      the variable name
+     * @param object    the object to be returned
      */
     public SimpleVariable(String name, Object object) {
         this.name = name;
