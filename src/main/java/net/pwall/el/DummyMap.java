@@ -1,8 +1,8 @@
 /*
  * @(#) DummyMap.java
  *
- * JSTL Expression Language Parser / Evaluator - Dummy Map implementation
- * Copyright (C) 2003, 2006, 2014  Peter Wall
+ * JSTL Expression Language Parser / Evaluator
+ * Copyright (C) 2003, 2005, 2006, 2007, 2012, 2013, 2020  Peter Wall
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -37,10 +37,10 @@ import java.util.Set;
  * <p>This class is provided as part of the JSTL Expression Language Parser /
  * Evaluator package because the Expression Language "<code>.</code>" and
  * "<code>[]</code>" operations can extract values from <code>Map</code>
- * objects, and it can be useful for <code>{@link Expression.Resolver}</code>
+ * objects, and it can be useful for <code>{@link Resolver}</code>
  * implementations to return objects that implement this interface.</p>
  *
- * @author Peter Wall
+ * @author  Peter Wall
  */
 public abstract class DummyMap implements Map<Object, Object> {
 

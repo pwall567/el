@@ -1,8 +1,8 @@
 /*
  * @(#) SimpleResolver.java
  *
- * JSTL Expression Language Parser / Evaluator - Simple Name Resolver
- * Copyright (C) 2003, 2006, 2014  Peter Wall
+ * JSTL Expression Language Parser / Evaluator
+ * Copyright (C) 2003, 2006, 2014, 2020  Peter Wall
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -32,11 +32,11 @@ import java.util.Map;
  * Name Resolver for Expression Language.  It has no built-in names, but it
  * will allow any number of new names to be created.
  *
- * @author Peter Wall
+ * @author  Peter Wall
  */
-public class SimpleResolver implements Expression.Resolver {
+public class SimpleResolver implements Resolver {
 
-    private Map<String, Object> map;
+    private final Map<String, Object> map;
 
     /**
      * Construct the <code>SimpleResolver</code>

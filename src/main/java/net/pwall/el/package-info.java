@@ -2,7 +2,7 @@
  * @(#) package-info.java
  *
  * JSTL Expression Language Parser / Evaluator
- * Copyright (C) 2003, 2005, 2014  Peter Wall
+ * Copyright (C) 2003, 2005, 2014, 2020  Peter Wall
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -26,10 +26,10 @@
 /**
  * Expression evaluation system for the JSTL Expression Language (EL).
  * Most of the functionality of this system is available as static methods
- * on the class {@link Expression}.
- * See the class documentation for {@link Expression} for more
+ * on the class {@link net.pwall.el.Expression}.
+ * See the class documentation for {@link net.pwall.el.Expression} for more
  * details.
  *
- * @author Peter Wall
+ * @author  Peter Wall
  */
 package net.pwall.el;
